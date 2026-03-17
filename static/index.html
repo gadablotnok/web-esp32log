@@ -63,6 +63,17 @@
         .status-normal { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border-color: rgba(6, 182, 212, 0.3); }
         .status-kering { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
 
+        .animated-dots::after {
+            content: '';
+            animation: dots 1.5s infinite steps(4, end);
+        }
+        @keyframes dots { 
+            0%, 20% { content: ''; } 
+            40% { content: '.'; } 
+            60% { content: '..'; } 
+            80%, 100% { content: '...'; } 
+        }
+
         /* Charts Section */
         .charts-container { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         @media (max-width: 900px) { .charts-container { grid-template-columns: 1fr; } }
@@ -152,10 +163,9 @@
 <body>
     <div class="container">
         <header>
-            <div class="logo">ESP32 <span style="color:white">PRO</span></div>
+            <div class="logo">ESP32 <span style="color:white">DATA LOGGING</span></div>
             <div style="display: flex; gap: 12px; align-items: center;">
-                <div id="connection-status" class="status-pill">Connected to Deno</div>
-                <div id="logging-indicator" class="status-pill" style="display:none; background: rgba(239,68,68,0.1); color: var(--danger);">Logging Paused</div>
+                <div id="logging-status" class="status-pill"></div>
             </div>
         </header>
 
@@ -183,8 +193,8 @@
                         <button class="secondary" onclick="clearHistory()">Clear History</button>
                     </div>
                     <div style="margin-top: 15px;">
-                        <label>Interval: <span id="interval-val">2</span> detik</label>
-                        <input type="range" id="input-interval" min="1" max="60" value="2" oninput="document.getElementById('interval-val').textContent = this.value" onchange="updateInterval(this.value)">
+                        <label>Interval: <span id="interval-val">2.0</span> detik</label>
+                        <input type="range" id="input-interval" min="500" max="15000" step="500" value="2000" oninput="document.getElementById('interval-val').textContent = (this.value / 1000).toFixed(1)" onchange="updateInterval(this.value)">
                     </div>
                 </div>
                 <div class="settings-group">
@@ -354,13 +364,24 @@
             btn.textContent = config.isLogging ? 'Stop Logging' : 'Start Logging';
             btn.className = config.isLogging ? 'stop' : '';
             
-            document.getElementById('logging-indicator').style.display = config.isLogging ? 'none' : 'block';
+            const logStatus = document.getElementById('logging-status');
+            if (config.isLogging) {
+                logStatus.innerHTML = 'Logging<span class="animated-dots"></span>';
+                logStatus.style.background = 'rgba(16,185,129,0.1)';
+                logStatus.style.color = 'var(--secondary)';
+                logStatus.style.borderColor = 'rgba(16,185,129,0.2)';
+            } else {
+                logStatus.innerHTML = 'Stopped';
+                logStatus.style.background = 'rgba(239,68,68,0.1)';
+                logStatus.style.color = 'var(--danger)';
+                logStatus.style.borderColor = 'rgba(239,68,68,0.2)';
+            }
             
             // Perbarui nilai slider HANYA saat user tidak sedang menggesernya
             const slider = document.getElementById('input-interval');
             if (document.activeElement !== slider) {
-                slider.value = config.interval / 1000;
-                document.getElementById('interval-val').textContent = config.interval / 1000;
+                slider.value = config.interval;
+                document.getElementById('interval-val').textContent = (config.interval / 1000).toFixed(1);
             }
         }
 
@@ -376,7 +397,7 @@
         async function updateInterval(val) {
             await fetch('/api/config', {
                 method: 'POST',
-                body: JSON.stringify({ interval: val * 1000 })
+                body: JSON.stringify({ interval: parseInt(val) })
             });
             fetchData();
         }
