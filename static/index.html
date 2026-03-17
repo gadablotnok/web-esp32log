@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>ESP32 Temperature Monitor</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        >
+        <style>
+            /* ============================================================
+               DESIGN SYSTEM - CSS Variables
+               ============================================================ */
+            :root {
+                --bg-primary: #0a0e1a;
+                --bg-secondary: #111827;
+                --bg-card: #1a1f35;
+                --bg-card-hover: #1f2545;
+                --bg-log: #0d1117;
+                --bg-log-row: rgba(255, 255, 255, 0.02);
+                --bg-log-row-alt: rgba(255, 255, 255, 0.04);
+
+                --text-primary: #f1f5f9;
+                --text-secondary: #94a3b8;
+                --text-muted: #64748b;
+                --text-dim: #475569;
+
+                --accent-ds18b20: #06b6d4;
+                --accent-ds18b20-glow: rgba(6, 182, 212, 0.25);
+                --accent-ds18b20-soft: rgba(6, 182, 212, 0.1);
+
+                --accent-lm35: #f59e0b;
+                --accent-lm35-glow: rgba(245, 158, 11, 0.25);
+                --accent-lm35-soft: rgba(245, 158, 11, 0.1);
+
+                --border-subtle: rgba(255, 255, 255, 0.06);
+                --border-card: rgba(255, 255, 255, 0.08);
+
+                --radius-sm: 8px;
+                --radius-md: 14px;
+                --radius-lg: 20px;
+
+                --shadow-card:
+                    0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(
+                    0,
+                    0,
+                    0,
+                    0.2
+                );
+                --shadow-glow-cyan: 0 0 40px rgba(6, 182, 212, 0.15);
+                --shadow-glow-amber: 0 0 40px rgba(245, 158, 11, 0.15);
+
+                --font-sans: "Inter", -apple-system, sans-serif;
+                --font-mono: "JetBrains Mono", "Fira Code", monospace;
+            }
+
+            /* ============================================================
+               RESET & BASE
+               ============================================================ */
+            *, *::before, *::after {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            html {
+                font-size: 16px;
+                scroll-behavior: smooth;
+            }
+
+            body {
+                font-family: var(--font-sans);
+                background: var(--bg-primary);
+                color: var(--text-primary);
+                min-height: 100vh;
+                overflow-x: hidden;
+            }
+
+            /* ============================================================
+               ANIMATED BACKGROUND
+               ============================================================ */
+            .bg-grid {
+                position: fixed;
+                inset: 0;
+                background-image:
+                    linear-gradient(
+                        rgba(255, 255, 255, 0.02) 1px,
+                        transparent 1px
+                    ),
+                    linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0.02) 1px,
+                    transparent 1px
+                );
+                background-size: 60px 60px;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .bg-glow {
+                position: fixed;
+                width: 500px;
+                height: 500px;
+                border-radius: 50%;
+                filter: blur(120px);
+                opacity: 0.12;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .bg-glow--cyan {
+                background: var(--accent-ds18b20);
+                top: -100px;
+                left: -100px;
+                animation: floatGlow 12s ease-in-out infinite;
+            }
+
+            .bg-glow--amber {
+                background: var(--accent-lm35);
+                bottom: -100px;
+                right: -100px;
+                animation: floatGlow 12s ease-in-out infinite reverse;
+            }
+
+            @keyframes floatGlow {
+                0%, 100% {
+                    transform: translate(0, 0);
+                }
+                50% {
+                    transform: translate(60px, 40px);
+                }
+            }
+
+            /* ============================================================
+               LAYOUT
+               ============================================================ */
+            .app {
+                position: relative;
+                z-index: 1;
+                max-width: 960px;
+                margin: 0 auto;
+                padding: 40px 20px 60px;
+            }
+
+            /* ============================================================
+               HEADER
+               ============================================================ */
+            .header {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+
+            .header__badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 6px 16px;
+                background: rgba(6, 182, 212, 0.08);
+                border: 1px solid rgba(6, 182, 212, 0.2);
+                border-radius: 100px;
+                font-size: 0.75rem;
+                font-weight: 500;
+                color: var(--accent-ds18b20);
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                margin-bottom: 16px;
+            }
+
+            .header__badge .dot {
+                width: 7px;
+                height: 7px;
+                background: #22c55e;
+                border-radius: 50%;
+                animation: pulse 2s ease-in-out infinite;
+            }
+
+            @keyframes pulse {
+                0%, 100% {
+                    opacity: 1;
+                    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+                }
+                50% {
+                    opacity: 0.7;
+                    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+                }
+            }
+
+            .header__title {
+                font-size: 2rem;
+                font-weight: 800;
+                letter-spacing: -0.03em;
+                background: linear-gradient(
+                    135deg,
+                    #f1f5f9 0%,
+                    #94a3b8 100%
+                );
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 8px;
+            }
+
+            .header__subtitle {
+                font-size: 0.9rem;
+                color: var(--text-muted);
+                font-weight: 400;
+            }
+
+            /* ============================================================
+               SENSOR CARDS
+               ============================================================ */
+            .cards {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 32px;
+            }
+
+            .card {
+                background: var(--bg-card);
+                border: 1px solid var(--border-card);
+                border-radius: var(--radius-lg);
+                padding: 28px;
+                transition:
+                    transform 0.3s ease,
+                    box-shadow 0.3s ease,
+                    border-color 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .card::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            }
+
+            .card--ds18b20::before {
+                background: linear-gradient(
+                    90deg,
+                    var(--accent-ds18b20),
+                    transparent
+                );
+            }
+
+            .card--lm35::before {
+                background: linear-gradient(
+                    90deg,
+                    var(--accent-lm35),
+                    transparent
+                );
+            }
+
+            .card:hover {
+                transform: translateY(-2px);
+                border-color: rgba(255, 255, 255, 0.12);
+            }
+
+            .card--ds18b20:hover {
+                box-shadow:
+                    var(--shadow-card),
+                    var(--shadow-glow-cyan);
+            }
+
+            .card--lm35:hover {
+                box-shadow:
+                    var(--shadow-card),
+                    var(--shadow-glow-amber);
+            }
+
+            .card__header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 20px;
+            }
+
+            .card__label {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .card__icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.1rem;
+            }
+
+            .card--ds18b20 .card__icon {
+                background: var(--accent-ds18b20-soft);
+                color: var(--accent-ds18b20);
+            }
+
+            .card--lm35 .card__icon {
+                background: var(--accent-lm35-soft);
+                color: var(--accent-lm35);
+            }
+
+            .card__name {
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: var(--text-secondary);
+                letter-spacing: 0.02em;
+            }
+
+            .card__type {
+                font-size: 0.7rem;
+                color: var(--text-dim);
+                font-weight: 400;
+            }
+
+            .card__status {
+                font-size: 0.65rem;
+                font-weight: 500;
+                padding: 3px 10px;
+                border-radius: 100px;
+                background: rgba(34, 197, 94, 0.1);
+                color: #22c55e;
+                border: 1px solid rgba(34, 197, 94, 0.2);
+            }
+
+            .card__temp-wrapper {
+                text-align: center;
+                padding: 12px 0;
+            }
+
+            .card__temp {
+                font-size: 3.5rem;
+                font-weight: 800;
+                letter-spacing: -0.04em;
+                line-height: 1;
+                font-variant-numeric: tabular-nums;
+                transition: color 0.3s ease;
+            }
+
+            .card--ds18b20 .card__temp {
+                color: var(--accent-ds18b20);
+            }
+
+            .card--lm35 .card__temp {
+                color: var(--accent-lm35);
+            }
+
+            .card__unit {
+                font-size: 1.4rem;
+                font-weight: 400;
+                opacity: 0.6;
+                margin-left: 2px;
+            }
+
+            .card__updated {
+                text-align: center;
+                font-size: 0.7rem;
+                color: var(--text-dim);
+                margin-top: 12px;
+            }
+
+            /* ============================================================
+               LOG SECTION
+               ============================================================ */
+            .log-section {
+                background: var(--bg-card);
+                border: 1px solid var(--border-card);
+                border-radius: var(--radius-lg);
+                overflow: hidden;
+            }
+
+            .log-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 18px 24px;
+                border-bottom: 1px solid var(--border-subtle);
+            }
+
+            .log-header__left {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .log-header__icon {
+                font-size: 1rem;
+                opacity: 0.6;
+            }
+
+            .log-header__title {
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: var(--text-secondary);
+            }
+
+            .log-header__count {
+                font-size: 0.7rem;
+                color: var(--text-dim);
+                font-weight: 400;
+                padding: 2px 8px;
+                background: rgba(255, 255, 255, 0.04);
+                border-radius: 100px;
+            }
+
+            .log-header__actions {
+                display: flex;
+                gap: 8px;
+            }
+
+            .btn-clear {
+                font-family: var(--font-sans);
+                font-size: 0.7rem;
+                font-weight: 500;
+                padding: 5px 14px;
+                border-radius: 6px;
+                border: 1px solid var(--border-card);
+                background: transparent;
+                color: var(--text-muted);
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .btn-clear:hover {
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--text-secondary);
+                border-color: rgba(255, 255, 255, 0.15);
+            }
+
+            .log-table-wrapper {
+                max-height: 380px;
+                overflow-y: auto;
+            }
+
+            .log-table-wrapper::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            .log-table-wrapper::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .log-table-wrapper::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 3px;
+            }
+
+            .log-table-wrapper::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.2);
+            }
+
+            .log-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .log-table thead {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+            }
+
+            .log-table th {
+                font-size: 0.68rem;
+                font-weight: 600;
+                color: var(--text-dim);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                padding: 10px 24px;
+                text-align: left;
+                background: var(--bg-log);
+                border-bottom: 1px solid var(--border-subtle);
+            }
+
+            .log-table td {
+                font-size: 0.8rem;
+                padding: 10px 24px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+                font-family: var(--font-mono);
+                font-weight: 400;
+            }
+
+            .log-table tr:nth-child(even) td {
+                background: var(--bg-log-row-alt);
+            }
+
+            .log-table tr {
+                transition: background 0.15s ease;
+            }
+
+            .log-table tbody tr:hover td {
+                background: rgba(255, 255, 255, 0.04);
+            }
+
+            .log-table .col-time {
+                color: var(--text-muted);
+                font-size: 0.75rem;
+            }
+
+            .log-table .col-ds18b20 {
+                color: var(--accent-ds18b20);
+                font-weight: 500;
+            }
+
+            .log-table .col-lm35 {
+                color: var(--accent-lm35);
+                font-weight: 500;
+            }
+
+            .log-table .new-row td {
+                animation: rowFadeIn 0.5s ease;
+            }
+
+            @keyframes rowFadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-6px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            /* ============================================================
+               FOOTER
+               ============================================================ */
+            .footer {
+                text-align: center;
+                margin-top: 32px;
+                font-size: 0.72rem;
+                color: var(--text-dim);
+            }
+
+            .footer span {
+                opacity: 0.5;
+            }
+
+            /* ============================================================
+               RESPONSIVE
+               ============================================================ */
+            @media (max-width: 640px) {
+                .cards {
+                    grid-template-columns: 1fr;
+                }
+
+                .card__temp {
+                    font-size: 2.8rem;
+                }
+
+                .app {
+                    padding: 24px 16px 40px;
+                }
+
+                .header__title {
+                    font-size: 1.5rem;
+                }
+
+                .log-table th,
+                .log-table td {
+                    padding: 8px 16px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Background Effects -->
+        <div class="bg-grid"></div>
+        <div class="bg-glow bg-glow--cyan"></div>
+        <div class="bg-glow bg-glow--amber"></div>
+
+        <div class="app">
+            <!-- Header -->
+            <header class="header">
+                <div class="header__badge">
+                    <span class="dot"></span>
+                    <span>Live Monitoring</span>
+                </div>
+                <h1 class="header__title">ESP32 Temperature Monitor</h1>
+                <p class="header__subtitle">
+                    DS18B20 & LM35 — Real-time sensor readings
+                </p>
+            </header>
+
+            <!-- Sensor Cards -->
+            <section class="cards" id="cards">
+                <!-- DS18B20 Card -->
+                <div class="card card--ds18b20">
+                    <div class="card__header">
+                        <div class="card__label">
+                            <div class="card__icon">🌡️</div>
+                            <div>
+                                <div class="card__name">DS18B20</div>
+                                <div class="card__type">Digital — OneWire</div>
+                            </div>
+                        </div>
+                        <div class="card__status" id="status-ds18b20">
+                            Online
+                        </div>
+                    </div>
+                    <div class="card__temp-wrapper">
+                        <span class="card__temp" id="temp-ds18b20">--.-</span>
+                        <span class="card__unit">°C</span>
+                    </div>
+                    <div class="card__updated" id="updated-ds18b20">
+                        Waiting for data...
+                    </div>
+                </div>
+
+                <!-- LM35 Card -->
+                <div class="card card--lm35">
+                    <div class="card__header">
+                        <div class="card__label">
+                            <div class="card__icon">🔥</div>
+                            <div>
+                                <div class="card__name">LM35</div>
+                                <div class="card__type">Analog — ADC</div>
+                            </div>
+                        </div>
+                        <div class="card__status" id="status-lm35">Online</div>
+                    </div>
+                    <div class="card__temp-wrapper">
+                        <span class="card__temp" id="temp-lm35">--.-</span>
+                        <span class="card__unit">°C</span>
+                    </div>
+                    <div class="card__updated" id="updated-lm35">
+                        Waiting for data...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Log Section -->
+            <section class="log-section">
+                <div class="log-header">
+                    <div class="log-header__left">
+                        <span class="log-header__icon">📋</span>
+                        <span class="log-header__title">Reading Log</span>
+                        <span class="log-header__count" id="log-count"
+                        >0 entries</span>
+                    </div>
+                    <div class="log-header__actions">
+                        <button
+                            class="btn-clear"
+                            id="btn-clear"
+                            onclick="clearLog()"
+                        >
+                            Clear Log
+                        </button>
+                    </div>
+                </div>
+                <div class="log-table-wrapper" id="log-wrapper">
+                    <table class="log-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%">#</th>
+                                <th style="width: 25%">Time</th>
+                                <th style="width: 25%">DS18B20 (°C)</th>
+                                <th style="width: 25%">LM35 (°C)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="log-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <div class="footer">
+                <span>ESP32 Self-Hosted Web Server • Sensor Monitor
+                    Dashboard</span>
+            </div>
+        </div>
+
+        <script>
+            /* ============================================================
+       DATA FETCH FUNCTIONS (Deno Deploy Connection)
+       ============================================================ */
+
+            // State
+            let logEntries = [];
+            let entryCount = 0;
+            const MAX_LOG_ENTRIES = 100;
+
+            // DOM elements
+            const tempDS18B20El = document.getElementById(
+                "temp-ds18b20",
+            );
+            const tempLM35El = document.getElementById(
+                "temp-lm35",
+            );
+            const updatedDS18B20El = document.getElementById(
+                "updated-ds18b20",
+            );
+            const updatedLM35El = document.getElementById(
+                "updated-lm35",
+            );
+            const logBody = document.getElementById("log-body");
+            const logCountEl = document.getElementById(
+                "log-count",
+            );
+            const logWrapper = document.getElementById(
+                "log-wrapper",
+            );
+
+            function getTimeString() {
+                const now = new Date();
+                return now.toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                });
+            }
+
+            /* ============================================================
+       UI UPDATE FUNCTIONS
+       ============================================================ */
+
+            function updateCards(ds18b20Temp, lm35Temp) {
+                // Animate number change
+                animateValue(tempDS18B20El, ds18b20Temp);
+                animateValue(tempLM35El, lm35Temp);
+
+                const timeStr = getTimeString();
+                updatedDS18B20El.textContent =
+                    `Updated at ${timeStr}`;
+                updatedLM35El.textContent =
+                    `Updated at ${timeStr}`;
+            }
+
+            function animateValue(element, newValue) {
+                element.style.transition =
+                    "transform 0.15s ease, opacity 0.15s ease";
+                element.style.transform = "scale(1.04)";
+                element.style.opacity = "0.7";
+
+                setTimeout(() => {
+                    element.textContent = newValue.toFixed(2);
+                    element.style.transform = "scale(1)";
+                    element.style.opacity = "1";
+                }, 150);
+            }
+
+            function addLogEntry(ds18b20Temp, lm35Temp) {
+                entryCount++;
+                const timeStr = getTimeString();
+
+                // Prepend new row (newest on top)
+                const row = document.createElement("tr");
+                row.classList.add("new-row");
+                row.innerHTML = `
+        <td class="col-time">${entryCount}</td>
+        <td class="col-time">${timeStr}</td>
+        <td class="col-ds18b20">${ds18b20Temp.toFixed(2)}</td>
+        <td class="col-lm35">${lm35Temp.toFixed(2)}</td>
+      `;
+
+                if (logBody.firstChild) {
+                    logBody.insertBefore(
+                        row,
+                        logBody.firstChild,
+                    );
+                } else {
+                    logBody.appendChild(row);
+                }
+
+                // Remove animation class after animation ends
+                setTimeout(
+                    () => row.classList.remove("new-row"),
+                    500,
+                );
+
+                // Limit entries
+                while (
+                    logBody.children.length > MAX_LOG_ENTRIES
+                ) {
+                    logBody.removeChild(logBody.lastChild);
+                }
+
+                // Update count
+                logCountEl.textContent = `${
+                    Math.min(entryCount, MAX_LOG_ENTRIES)
+                } entries`;
+            }
+
+            function clearLog() {
+                logBody.innerHTML = "";
+                entryCount = 0;
+                logCountEl.textContent = "0 entries";
+            }
+
+            /* ============================================================
+       MAIN LOOP (Deno Deploy / Server-side dummy)
+       ============================================================ */
+
+            async function updateSensors() {
+                try {
+                    const response = await fetch("/data");
+                    if (!response.ok) {
+                        throw new Error("Network error");
+                    }
+                    const d = await response.json();
+
+                    updateCards(d.ds, d.lm);
+                    addLogEntry(d.ds, d.lm);
+                } catch (err) {
+                    console.error("Fetch error:", err);
+                }
+            }
+
+            // Start fetching updates
+            updateSensors(); // Initial reading
+            setInterval(updateSensors, 2500); // Every 2.5 seconds
+        </script>
+    </body>
+</html>
