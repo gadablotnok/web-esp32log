@@ -55,13 +55,13 @@
         .badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; margin-top: 12px; }
 
         /* Status Colors */
-        .status-cold { background: #1e3a8a; color: #60a5fa; }
-        .status-sejuk { background: rgba(6,182,212,0.1); color: #22d3ee; }
-        .status-hangat { background: rgba(245,158,11,0.1); color: #fbbf24; }
-        .status-panas { background: rgba(239,68,68,0.1); color: #f87171; }
-        .status-basah { background: rgba(16,185,129,0.1); color: #34d399; }
-        .status-normal { background: rgba(6,182,212,0.1); color: #22d3ee; }
-        .status-kering { background: rgba(239,68,68,0.1); color: #f87171; }
+        .status-cold { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3); }
+        .status-sejuk { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border-color: rgba(6, 182, 212, 0.3); }
+        .status-hangat { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3); }
+        .status-panas { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+        .status-basah { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+        .status-normal { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border-color: rgba(6, 182, 212, 0.3); }
+        .status-kering { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
 
         /* Charts Section */
         .charts-container { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
@@ -84,29 +84,69 @@
         input[type="range"] { width: 100%; margin: 10px 0; }
         label { font-size: 0.8rem; color: var(--text-muted); }
 
-        /* Table */
-        .table-container { 
+        /* Table - Restored Style */
+        .log-section { 
+            grid-column: 1 / -1; 
+            background: var(--card); 
+            border: 1px solid var(--border); 
+            border-radius: 16px; 
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700;
+        }
+
+        .log-table-wrapper { 
             width: 100%; 
             overflow-x: auto; 
             max-height: 400px; 
             overflow-y: auto;
-            margin-top: 24px; 
-            border-radius: 12px; 
-            border: 1px solid var(--border); 
-            background: rgba(0,0,0,0.2);
+            background: #0d1117;
         }
-        table { width: 100%; min-width: 700px; border-collapse: collapse; font-size: 0.85rem; }
+        
+        .log-table-wrapper::-webkit-scrollbar { width: 6px; height: 6px; }
+        .log-table-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .log-table-wrapper::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+        .log-table-wrapper::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+        table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 0.85rem; }
         th { 
-            background: rgba(255,255,255,0.05); 
-            text-align: left; 
-            padding: 12px 16px; 
-            color: var(--text-muted); 
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 12px 24px;
+            text-align: left;
+            background: #0d1117; 
+            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 10;
         }
-        td { padding: 12px 16px; border-top: 1px solid var(--border); font-family: 'JetBrains Mono'; }
+        td { 
+            padding: 12px 24px; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02); 
+            font-family: 'JetBrains Mono', monospace; 
+        }
+        tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+        tr:hover td { background: rgba(255, 255, 255, 0.04); }
 
+        /* Responsive Fixes */
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; gap: 16px; }
+            .charts-container { grid-template-columns: 1fr; gap: 16px; }
+            .card { padding: 20px; }
+            .card-value { font-size: 2.2rem; }
+            header { flex-direction: column; align-items: flex-start; gap: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -170,19 +210,25 @@
             </div>
 
             <!-- Log Table -->
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Waktu</th>
-                            <th>DS18B20 (°C)</th>
-                            <th>Soil (%)</th>
-                            <th>Status Suhu</th>
-                            <th>Status Tanah</th>
-                        </tr>
-                    </thead>
-                    <tbody id="log-body"></tbody>
-                </table>
+            <div class="log-section">
+                <div class="log-header">
+                    <div>📋 Log Pembacaan</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;" id="log-count">0 entri</div>
+                </div>
+                <div class="log-table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>DS18B20 (°C)</th>
+                                <th>Soil (%)</th>
+                                <th>Status Suhu</th>
+                                <th>Status Tanah</th>
+                            </tr>
+                        </thead>
+                        <tbody id="log-body"></tbody>
+                    </table>
+                </div>
             </div>
         </main>
 
@@ -291,14 +337,16 @@
                 const tStat = getTempStatus(h.ds);
                 const sStat = getSoilStatus(h.moisture);
                 const row = `<tr>
-                    <td>${new Date(h.time).toLocaleTimeString()}</td>
-                    <td style="color:#06b6d4">${h.ds.toFixed(2)}</td>
-                    <td style="color:#10b981">${Math.round(h.moisture)}%</td>
+                    <td style="color:var(--text-muted); font-size:0.75rem;">${new Date(h.time).toLocaleTimeString()}</td>
+                    <td style="color:#06b6d4; font-weight:500;">${h.ds.toFixed(2)}</td>
+                    <td style="color:#10b981; font-weight:500;">${Math.round(h.moisture)}%</td>
                     <td><span class="badge ${tStat.class}">${tStat.text}</span></td>
                     <td><span class="badge ${sStat.class}">${sStat.text}</span></td>
                 </tr>`;
                 body.innerHTML += row;
             });
+
+            document.getElementById('log-count').textContent = `${history.length} entri`;
         }
 
         function syncConfigUI() {
