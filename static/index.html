@@ -30,9 +30,9 @@
                 --accent-ds18b20-glow: rgba(6, 182, 212, 0.25);
                 --accent-ds18b20-soft: rgba(6, 182, 212, 0.1);
 
-                --accent-lm35: #f59e0b;
-                --accent-lm35-glow: rgba(245, 158, 11, 0.25);
-                --accent-lm35-soft: rgba(245, 158, 11, 0.1);
+                --accent-soil: #10b981;
+                --accent-soil-glow: rgba(16, 185, 129, 0.25);
+                --accent-soil-soft: rgba(16, 185, 129, 0.1);
 
                 --border-subtle: rgba(255, 255, 255, 0.06);
                 --border-card: rgba(255, 255, 255, 0.08);
@@ -49,7 +49,7 @@
                     0.2
                 );
                 --shadow-glow-cyan: 0 0 40px rgba(6, 182, 212, 0.15);
-                --shadow-glow-amber: 0 0 40px rgba(245, 158, 11, 0.15);
+                --shadow-glow-amber: 0 0 40px rgba(16, 185, 129, 0.15);
 
                 --font-sans: "Inter", -apple-system, sans-serif;
                 --font-mono: "JetBrains Mono", "Fira Code", monospace;
@@ -117,7 +117,7 @@
             }
 
             .bg-glow--amber {
-                background: var(--accent-lm35);
+                background: var(--accent-soil);
                 bottom: -100px;
                 right: -100px;
                 animation: floatGlow 12s ease-in-out infinite reverse;
@@ -248,10 +248,10 @@
                 );
             }
 
-            .card--lm35::before {
+            .card--soil::before {
                 background: linear-gradient(
                     90deg,
-                    var(--accent-lm35),
+                    var(--accent-soil),
                     transparent
                 );
             }
@@ -267,7 +267,7 @@
                     var(--shadow-glow-cyan);
             }
 
-            .card--lm35:hover {
+            .card--soil:hover {
                 box-shadow:
                     var(--shadow-card),
                     var(--shadow-glow-amber);
@@ -301,9 +301,9 @@
                 color: var(--accent-ds18b20);
             }
 
-            .card--lm35 .card__icon {
-                background: var(--accent-lm35-soft);
-                color: var(--accent-lm35);
+            .card--soil .card__icon {
+                background: var(--accent-soil-soft);
+                color: var(--accent-soil);
             }
 
             .card__name {
@@ -347,8 +347,8 @@
                 color: var(--accent-ds18b20);
             }
 
-            .card--lm35 .card__temp {
-                color: var(--accent-lm35);
+            .card--soil .card__temp {
+                color: var(--accent-soil);
             }
 
             .card__unit {
@@ -508,8 +508,8 @@
                 font-weight: 500;
             }
 
-            .log-table .col-lm35 {
-                color: var(--accent-lm35);
+            .log-table .col-soil {
+                color: var(--accent-soil);
                 font-weight: 500;
             }
 
@@ -614,7 +614,7 @@
                 </div>
 
                 <!-- Soil Moisture Card -->
-                <div class="card card--lm35">
+                <div class="card card--soil">
                     <div class="card__header">
                         <div class="card__label">
                             <div class="card__icon">🌱</div>
@@ -623,13 +623,13 @@
                                 <div class="card__type">Analog — Resistor</div>
                             </div>
                         </div>
-                        <div class="card__status" id="status-lm35">Online</div>
+                        <div class="card__status" id="status-soil">Online</div>
                     </div>
                     <div class="card__temp-wrapper">
-                        <span class="card__temp" id="temp-lm35">----</span>
+                        <span class="card__temp" id="temp-soil">----</span>
                         <span class="card__unit">raw</span>
                     </div>
-                    <div class="card__updated" id="updated-lm35">
+                    <div class="card__updated" id="updated-soil">
                         Waiting for data...
                     </div>
                 </div>
@@ -690,14 +690,14 @@
             const tempDS18B20El = document.getElementById(
                 "temp-ds18b20",
             );
-            const tempLM35El = document.getElementById(
-                "temp-lm35",
+            const tempSoilEl = document.getElementById(
+                "temp-soil",
             );
             const updatedDS18B20El = document.getElementById(
                 "updated-ds18b20",
             );
-            const updatedLM35El = document.getElementById(
-                "updated-lm35",
+            const updatedSoilEl = document.getElementById(
+                "updated-soil",
             );
             const logBody = document.getElementById("log-body");
             const logCountEl = document.getElementById(
@@ -723,12 +723,12 @@
             function updateCards(ds18b20Temp, soilValue) {
                 // Animate number change
                 animateValue(tempDS18B20El, ds18b20Temp, 2);
-                animateValue(tempLM35El, soilValue, 0);
+                animateValue(tempSoilEl, soilValue, 0);
 
                 const timeStr = getTimeString();
                 updatedDS18B20El.textContent =
                     `Diperbarui pukul ${timeStr}`;
-                updatedLM35El.textContent =
+                updatedSoilEl.textContent =
                     `Diperbarui pukul ${timeStr}`;
             }
 
@@ -758,7 +758,7 @@
         <td class="col-time">${entryCount}</td>
         <td class="col-time">${timeStr}</td>
         <td class="col-ds18b20">${ds18b20Temp.toFixed(2)}</td>
-        <td class="col-lm35">${Math.round(soilValue)}</td>
+        <td class="col-soil">${Math.round(soilValue)}</td>
       `;
 
                 if (logBody.firstChild) {
