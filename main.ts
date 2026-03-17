@@ -1,4 +1,5 @@
 import { serveDir } from "std/http/file_server.ts";
+import mqtt from "npm:mqtt";
 
 interface DataPoint {
   ds: number;
@@ -9,8 +10,8 @@ interface DataPoint {
 // In-memory state
 let history: DataPoint[] = [];
 let latestData: DataPoint = {
-  ds: 25.0,
-  moisture: 50,
+  ds: 0,
+  moisture: 0,
   time: new Date().toISOString(),
 };
 let config = {
@@ -20,43 +21,76 @@ let config = {
   wetValue: 1500,
 };
 
-// --- DATA SYNTHESIS GENERATOR ---
-// Generates dummy data on-demand instead of background setInterval
-// This is much safer for serverless environments like Deno Deploy
-let lastGenTime = Date.now();
+// --- CREDENTIALS (USER MUST FILL THESE) ---
+// Note: for production, use environment variables!
+const MQTT_BROKER = "mqtts://xxx.hivemq.cloud:8883"; 
+const MQTT_USERNAME = "your_username";
+const MQTT_PASSWORD = "your_password";
+// ------------------------------------------
 
-function updateSyntheticDataIfNeeded() {
-  if (!config.isLogging) return;
+let connectedToEsp = false;
+let initSamples = 0;
+let lastDataTime = Date.now();
 
-  const now = Date.now();
-  if (now - lastGenTime >= config.interval) {
-    // Determine how many intervals have passed (cap at 10 to avoid huge loops if paused)
-    const ticks = Math.min(10, Math.floor((now - lastGenTime) / config.interval));
+// MQTT Setup
+const clientId = "deno-server-" + Math.random().toString(16).slice(2);
+const client = mqtt.connect(MQTT_BROKER, {
+  username: MQTT_USERNAME,
+  password: MQTT_PASSWORD,
+  clientId: clientId
+});
 
-    for (let i = 0; i < ticks; i++) {
-      const lastDs = latestData.ds || 26.0;
-      const newDs = lastDs + (Math.random() - 0.5) * 0.4;
-      const ds = Math.max(10, Math.min(40, newDs));
+client.on('connect', () => {
+    console.log("[MQTT] Connected to Broker!");
+    client.subscribe("esp32/data");
+});
 
-      const lastMoisture = latestData.moisture || 50;
-      const newMoisture = lastMoisture + (Math.random() - 0.5) * 5;
-      const moisture = Math.max(0, Math.min(100, newMoisture));
+client.on('error', (err) => {
+    console.error("[MQTT] Error:", err);
+});
 
-      // Calculate the approximate timestamp for this tick
-      const tickTimeMs = lastGenTime + (i + 1) * config.interval;
+client.on('message', (topic, message) => {
+    if (topic === "esp32/data") {
+        try {
+            const data = JSON.parse(message.toString());
+            latestData = {
+                ds: data.temp || 0,
+                moisture: data.moisture || 0,
+                time: new Date().toISOString()
+            };
+            
+            lastDataTime = Date.now();
 
-      latestData = {
-        ds,
-        moisture,
-        time: new Date(tickTimeMs).toISOString(),
-      };
-
-      history.push(latestData);
-      if (history.length > 200) history.shift();
+            if (!connectedToEsp) {
+                initSamples++;
+                console.log(`[MQTT] Menerima sample awal: ${initSamples}/3`);
+                if (initSamples >= 3) {
+                    connectedToEsp = true;
+                    console.log("[MQTT] ESP32 Terhubung! Mengembalikan interval config...");
+                    client.publish("esp32/config", JSON.stringify(config));
+                }
+            }
+            
+            if (config.isLogging) {
+                history.push(latestData);
+                if (history.length > 200) history.shift();
+            }
+        } catch (e) {
+            console.error("Invalid MQTT payload:", e);
+        }
     }
-    lastGenTime = now;
-  }
-}
+});
+
+// Watchdog to check ESP32 connection
+setInterval(() => {
+    // If we haven't received data for a while (configurable timeout maxing at 10s)
+    const timeout = Math.max(config.interval + 2000, 10000);
+    if (connectedToEsp && (Date.now() - lastDataTime > timeout)) {
+        console.log("[Watchdog] ESP32 Timeout! Koneksi terputus.");
+        connectedToEsp = false;
+        initSamples = 0;
+    }
+}, 2000);
 
 Deno.serve(async (req) => {
   try {
@@ -84,12 +118,13 @@ Deno.serve(async (req) => {
 
     // API: Get current data & history
     if (url.pathname === "/api/data") {
-      updateSyntheticDataIfNeeded();
       return new Response(
         JSON.stringify({
           current: latestData,
           history,
           config,
+          connectedToEsp,
+          initSamples
         }),
         {
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -97,7 +132,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // API: Receive data from ESP32
+    // API: Receive data from ESP32 via HTTP (Fallback)
     if (url.pathname === "/api/report" && req.method === "POST") {
       const data = await req.json();
       latestData = {
@@ -105,6 +140,13 @@ Deno.serve(async (req) => {
         moisture: data.moisture || 0,
         time: new Date().toISOString(),
       };
+
+      lastDataTime = Date.now();
+      
+      if (!connectedToEsp) {
+          initSamples++;
+          if (initSamples >= 3) connectedToEsp = true;
+      }
 
       if (config.isLogging) {
         history.push(latestData);
@@ -121,18 +163,24 @@ Deno.serve(async (req) => {
     if (url.pathname === "/api/config" && req.method === "POST") {
       const newConfig = await req.json();
       config = { ...config, ...newConfig };
-      // Sync lastGenTime so we don't immediately generate multiple ticks upon restarting
-      if (newConfig.isLogging) {
-          lastGenTime = Date.now();
+      
+      // Send the new config to ESP32 via MQTT
+      if (client.connected) {
+          client.publish("esp32/config", JSON.stringify(config));
       }
+
       return new Response(
         JSON.stringify({ success: true, config }),
         { headers: { "Content-Type": "application/json", ...corsHeaders } },
       );
     }
 
-    // API: Calibration (placeholder)
+    // API: Calibration
     if (url.pathname === "/api/calibrate" && req.method === "POST") {
+      const payload = await req.json();
+      if (client.connected) {
+          client.publish("esp32/calibrate", JSON.stringify({ mode: payload.mode }));
+      }
       return new Response(
         JSON.stringify({ success: true }),
         { headers: { "Content-Type": "application/json", ...corsHeaders } },
