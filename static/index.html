@@ -1,822 +1,327 @@
 <!DOCTYPE html>
 <html lang="id">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>ESP32 Temperature Monitor</title>
-        <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
-            rel="stylesheet"
-        >
-        <style>
-            /* ============================================================
-               DESIGN SYSTEM - CSS Variables
-               ============================================================ */
-            :root {
-                --bg-primary: #0a0e1a;
-                --bg-secondary: #111827;
-                --bg-card: #1a1f35;
-                --bg-card-hover: #1f2545;
-                --bg-log: #0d1117;
-                --bg-log-row: rgba(255, 255, 255, 0.02);
-                --bg-log-row-alt: rgba(255, 255, 255, 0.04);
-
-                --text-primary: #f1f5f9;
-                --text-secondary: #94a3b8;
-                --text-muted: #64748b;
-                --text-dim: #475569;
-
-                --accent-ds18b20: #06b6d4;
-                --accent-ds18b20-glow: rgba(6, 182, 212, 0.25);
-                --accent-ds18b20-soft: rgba(6, 182, 212, 0.1);
-
-                --accent-soil: #10b981;
-                --accent-soil-glow: rgba(16, 185, 129, 0.25);
-                --accent-soil-soft: rgba(16, 185, 129, 0.1);
-
-                --border-subtle: rgba(255, 255, 255, 0.06);
-                --border-card: rgba(255, 255, 255, 0.08);
-
-                --radius-sm: 8px;
-                --radius-md: 14px;
-                --radius-lg: 20px;
-
-                --shadow-card:
-                    0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(
-                    0,
-                    0,
-                    0,
-                    0.2
-                );
-                --shadow-glow-cyan: 0 0 40px rgba(6, 182, 212, 0.15);
-                --shadow-glow-amber: 0 0 40px rgba(16, 185, 129, 0.15);
-
-                --font-sans: "Inter", -apple-system, sans-serif;
-                --font-mono: "JetBrains Mono", "Fira Code", monospace;
-            }
-
-            /* ============================================================
-               RESET & BASE
-               ============================================================ */
-            *, *::before, *::after {
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }
-
-            html {
-                font-size: 16px;
-                scroll-behavior: smooth;
-            }
-
-            body {
-                font-family: var(--font-sans);
-                background: var(--bg-primary);
-                color: var(--text-primary);
-                min-height: 100vh;
-                overflow-x: hidden;
-            }
-
-            /* ============================================================
-               ANIMATED BACKGROUND
-               ============================================================ */
-            .bg-grid {
-                position: fixed;
-                inset: 0;
-                background-image:
-                    linear-gradient(
-                        rgba(255, 255, 255, 0.02) 1px,
-                        transparent 1px
-                    ),
-                    linear-gradient(
-                    90deg,
-                    rgba(255, 255, 255, 0.02) 1px,
-                    transparent 1px
-                );
-                background-size: 60px 60px;
-                pointer-events: none;
-                z-index: 0;
-            }
-
-            .bg-glow {
-                position: fixed;
-                width: 500px;
-                height: 500px;
-                border-radius: 50%;
-                filter: blur(120px);
-                opacity: 0.12;
-                pointer-events: none;
-                z-index: 0;
-            }
-
-            .bg-glow--cyan {
-                background: var(--accent-ds18b20);
-                top: -100px;
-                left: -100px;
-                animation: floatGlow 12s ease-in-out infinite;
-            }
-
-            .bg-glow--amber {
-                background: var(--accent-soil);
-                bottom: -100px;
-                right: -100px;
-                animation: floatGlow 12s ease-in-out infinite reverse;
-            }
-
-            @keyframes floatGlow {
-                0%, 100% {
-                    transform: translate(0, 0);
-                }
-                50% {
-                    transform: translate(60px, 40px);
-                }
-            }
-
-            /* ============================================================
-               LAYOUT
-               ============================================================ */
-            .app {
-                position: relative;
-                z-index: 1;
-                max-width: 960px;
-                margin: 0 auto;
-                padding: 40px 20px 60px;
-            }
-
-            /* ============================================================
-               HEADER
-               ============================================================ */
-            .header {
-                text-align: center;
-                margin-bottom: 40px;
-            }
-
-            .header__badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 6px 16px;
-                background: rgba(6, 182, 212, 0.08);
-                border: 1px solid rgba(6, 182, 212, 0.2);
-                border-radius: 100px;
-                font-size: 0.75rem;
-                font-weight: 500;
-                color: var(--accent-ds18b20);
-                letter-spacing: 0.05em;
-                text-transform: uppercase;
-                margin-bottom: 16px;
-            }
-
-            .header__badge .dot {
-                width: 7px;
-                height: 7px;
-                background: #22c55e;
-                border-radius: 50%;
-                animation: pulse 2s ease-in-out infinite;
-            }
-
-            @keyframes pulse {
-                0%, 100% {
-                    opacity: 1;
-                    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-                }
-                50% {
-                    opacity: 0.7;
-                    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
-                }
-            }
-
-            .header__title {
-                font-size: 2rem;
-                font-weight: 800;
-                letter-spacing: -0.03em;
-                background: linear-gradient(
-                    135deg,
-                    #f1f5f9 0%,
-                    #94a3b8 100%
-                );
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-                margin-bottom: 8px;
-            }
-
-            .header__subtitle {
-                font-size: 0.9rem;
-                color: var(--text-muted);
-                font-weight: 400;
-            }
-
-            /* ============================================================
-               SENSOR CARDS
-               ============================================================ */
-            .cards {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 20px;
-                margin-bottom: 32px;
-            }
-
-            .card {
-                background: var(--bg-card);
-                border: 1px solid var(--border-card);
-                border-radius: var(--radius-lg);
-                padding: 28px;
-                transition:
-                    transform 0.3s ease,
-                    box-shadow 0.3s ease,
-                    border-color 0.3s ease;
-                position: relative;
-                overflow: hidden;
-            }
-
-            .card::before {
-                content: "";
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                height: 2px;
-                border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-            }
-
-            .card--ds18b20::before {
-                background: linear-gradient(
-                    90deg,
-                    var(--accent-ds18b20),
-                    transparent
-                );
-            }
-
-            .card--soil::before {
-                background: linear-gradient(
-                    90deg,
-                    var(--accent-soil),
-                    transparent
-                );
-            }
-
-            .card:hover {
-                transform: translateY(-2px);
-                border-color: rgba(255, 255, 255, 0.12);
-            }
-
-            .card--ds18b20:hover {
-                box-shadow:
-                    var(--shadow-card),
-                    var(--shadow-glow-cyan);
-            }
-
-            .card--soil:hover {
-                box-shadow:
-                    var(--shadow-card),
-                    var(--shadow-glow-amber);
-            }
-
-            .card__header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                margin-bottom: 20px;
-            }
-
-            .card__label {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
-            .card__icon {
-                width: 36px;
-                height: 36px;
-                border-radius: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 1.1rem;
-            }
-
-            .card--ds18b20 .card__icon {
-                background: var(--accent-ds18b20-soft);
-                color: var(--accent-ds18b20);
-            }
-
-            .card--soil .card__icon {
-                background: var(--accent-soil-soft);
-                color: var(--accent-soil);
-            }
-
-            .card__name {
-                font-size: 0.85rem;
-                font-weight: 600;
-                color: var(--text-secondary);
-                letter-spacing: 0.02em;
-            }
-
-            .card__type {
-                font-size: 0.7rem;
-                color: var(--text-dim);
-                font-weight: 400;
-            }
-
-            .card__status {
-                font-size: 0.65rem;
-                font-weight: 500;
-                padding: 3px 10px;
-                border-radius: 100px;
-                background: rgba(34, 197, 94, 0.1);
-                color: #22c55e;
-                border: 1px solid rgba(34, 197, 94, 0.2);
-            }
-
-            .card__temp-wrapper {
-                text-align: center;
-                padding: 12px 0;
-            }
-
-            .card__temp {
-                font-size: 3.5rem;
-                font-weight: 800;
-                letter-spacing: -0.04em;
-                line-height: 1;
-                font-variant-numeric: tabular-nums;
-                transition: color 0.3s ease;
-            }
-
-            .card--ds18b20 .card__temp {
-                color: var(--accent-ds18b20);
-            }
-
-            .card--soil .card__temp {
-                color: var(--accent-soil);
-            }
-
-            .card__unit {
-                font-size: 1.4rem;
-                font-weight: 400;
-                opacity: 0.6;
-                margin-left: 2px;
-            }
-
-            .card__updated {
-                text-align: center;
-                font-size: 0.7rem;
-                color: var(--text-dim);
-                margin-top: 12px;
-            }
-
-            /* ============================================================
-               LOG SECTION
-               ============================================================ */
-            .log-section {
-                background: var(--bg-card);
-                border: 1px solid var(--border-card);
-                border-radius: var(--radius-lg);
-                overflow: hidden;
-            }
-
-            .log-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 18px 24px;
-                border-bottom: 1px solid var(--border-subtle);
-            }
-
-            .log-header__left {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
-            .log-header__icon {
-                font-size: 1rem;
-                opacity: 0.6;
-            }
-
-            .log-header__title {
-                font-size: 0.85rem;
-                font-weight: 600;
-                color: var(--text-secondary);
-            }
-
-            .log-header__count {
-                font-size: 0.7rem;
-                color: var(--text-dim);
-                font-weight: 400;
-                padding: 2px 8px;
-                background: rgba(255, 255, 255, 0.04);
-                border-radius: 100px;
-            }
-
-            .log-header__actions {
-                display: flex;
-                gap: 8px;
-            }
-
-            .btn-clear {
-                font-family: var(--font-sans);
-                font-size: 0.7rem;
-                font-weight: 500;
-                padding: 5px 14px;
-                border-radius: 6px;
-                border: 1px solid var(--border-card);
-                background: transparent;
-                color: var(--text-muted);
-                cursor: pointer;
-                transition: all 0.2s ease;
-            }
-
-            .btn-clear:hover {
-                background: rgba(255, 255, 255, 0.06);
-                color: var(--text-secondary);
-                border-color: rgba(255, 255, 255, 0.15);
-            }
-
-            .log-table-wrapper {
-                max-height: 380px;
-                overflow-y: auto;
-            }
-
-            .log-table-wrapper::-webkit-scrollbar {
-                width: 6px;
-            }
-
-            .log-table-wrapper::-webkit-scrollbar-track {
-                background: transparent;
-            }
-
-            .log-table-wrapper::-webkit-scrollbar-thumb {
-                background: rgba(255, 255, 255, 0.1);
-                border-radius: 3px;
-            }
-
-            .log-table-wrapper::-webkit-scrollbar-thumb:hover {
-                background: rgba(255, 255, 255, 0.2);
-            }
-
-            .log-table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-
-            .log-table thead {
-                position: sticky;
-                top: 0;
-                z-index: 2;
-            }
-
-            .log-table th {
-                font-size: 0.68rem;
-                font-weight: 600;
-                color: var(--text-dim);
-                text-transform: uppercase;
-                letter-spacing: 0.06em;
-                padding: 10px 24px;
-                text-align: left;
-                background: var(--bg-log);
-                border-bottom: 1px solid var(--border-subtle);
-            }
-
-            .log-table td {
-                font-size: 0.8rem;
-                padding: 10px 24px;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-                font-family: var(--font-mono);
-                font-weight: 400;
-            }
-
-            .log-table tr:nth-child(even) td {
-                background: var(--bg-log-row-alt);
-            }
-
-            .log-table tr {
-                transition: background 0.15s ease;
-            }
-
-            .log-table tbody tr:hover td {
-                background: rgba(255, 255, 255, 0.04);
-            }
-
-            .log-table .col-time {
-                color: var(--text-muted);
-                font-size: 0.75rem;
-            }
-
-            .log-table .col-ds18b20 {
-                color: var(--accent-ds18b20);
-                font-weight: 500;
-            }
-
-            .log-table .col-soil {
-                color: var(--accent-soil);
-                font-weight: 500;
-            }
-
-            .log-table .new-row td {
-                animation: rowFadeIn 0.5s ease;
-            }
-
-            @keyframes rowFadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(-6px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            /* ============================================================
-               FOOTER
-               ============================================================ */
-            .footer {
-                text-align: center;
-                margin-top: 32px;
-                font-size: 0.72rem;
-                color: var(--text-dim);
-            }
-
-            .footer span {
-                opacity: 0.5;
-            }
-
-            /* ============================================================
-               RESPONSIVE
-               ============================================================ */
-            @media (max-width: 640px) {
-                .cards {
-                    grid-template-columns: 1fr;
-                }
-
-                .card__temp {
-                    font-size: 2.8rem;
-                }
-
-                .app {
-                    padding: 24px 16px 40px;
-                }
-
-                .header__title {
-                    font-size: 1.5rem;
-                }
-
-                .log-table th,
-                .log-table td {
-                    padding: 8px 16px;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <!-- Background Effects -->
-        <div class="bg-grid"></div>
-        <div class="bg-glow bg-glow--cyan"></div>
-        <div class="bg-glow bg-glow--amber"></div>
-
-        <div class="app">
-            <!-- Header -->
-            <header class="header">
-                <div class="header__badge">
-                    <span class="dot"></span>
-                    <span>Live Monitoring</span>
-                </div>
-                <h1 class="header__title">ESP32 Sensor Monitor</h1>
-                <p class="header__subtitle">
-                    DS18B20 & Soil Moisture — Real-time sensor readings
-                </p>
-            </header>
-
-            <!-- Sensor Cards -->
-            <section class="cards" id="cards">
-                <!-- DS18B20 Card -->
-                <div class="card card--ds18b20">
-                    <div class="card__header">
-                        <div class="card__label">
-                            <div class="card__icon">🌡️</div>
-                            <div>
-                                <div class="card__name">DS18B20</div>
-                                <div class="card__type">Digital — OneWire</div>
-                            </div>
-                        </div>
-                        <div class="card__status" id="status-ds18b20">
-                            Online
-                        </div>
-                    </div>
-                    <div class="card__temp-wrapper">
-                        <span class="card__temp" id="temp-ds18b20">--.-</span>
-                        <span class="card__unit">°C</span>
-                    </div>
-                    <div class="card__updated" id="updated-ds18b20">
-                        Waiting for data...
-                    </div>
-                </div>
-
-                <!-- Soil Moisture Card -->
-                <div class="card card--soil">
-                    <div class="card__header">
-                        <div class="card__label">
-                            <div class="card__icon">🌱</div>
-                            <div>
-                                <div class="card__name">Soil Moisture</div>
-                                <div class="card__type">Analog — Resistor</div>
-                            </div>
-                        </div>
-                        <div class="card__status" id="status-soil">Online</div>
-                    </div>
-                    <div class="card__temp-wrapper">
-                        <span class="card__temp" id="temp-soil">----</span>
-                        <span class="card__unit">raw</span>
-                    </div>
-                    <div class="card__updated" id="updated-soil">
-                        Waiting for data...
-                    </div>
-                </div>
-            </section>
-
-            <!-- Log Section -->
-            <section class="log-section">
-                <div class="log-header">
-                    <div class="log-header__left">
-                        <span class="log-header__icon">📋</span>
-                        <span class="log-header__title">Reading Log</span>
-                        <span class="log-header__count" id="log-count"
-                        >0 entries</span>
-                    </div>
-                    <div class="log-header__actions">
-                        <button
-                            class="btn-clear"
-                            id="btn-clear"
-                            onclick="clearLog()"
-                        >
-                            Clear Log
-                        </button>
-                    </div>
-                </div>
-                <div class="log-table-wrapper" id="log-wrapper">
-                    <table class="log-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%">#</th>
-                                <th style="width: 25%">Time</th>
-                                <th style="width: 25%">DS18B20 (°C)</th>
-                                <th style="width: 25%">Soil (raw)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="log-body"></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Footer -->
-            <div class="footer">
-                <span>ESP32 Self-Hosted Web Server • Sensor Monitor
-                    Dashboard</span>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Advanced Pro Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030712;
+            --card: #111827;
+            --accent: #06b6d4;
+            --secondary: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text: #f9fafb;
+            --text-muted: #9ca3af;
+            --border: rgba(255,255,255,0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            line-height: 1.5; 
+            padding: 20px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; display: grid; gap: 24px; }
+
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid var(--border); }
+        .logo { font-weight: 800; font-size: 1.5rem; color: var(--accent); letter-spacing: -1px; }
+        .status-pill { background: rgba(16,185,129,0.1); color: var(--secondary); padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; font-weight: 600; border: 1px solid rgba(16,185,129,0.2); }
+
+        /* Dashboard Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+
+        .card { 
+            background: var(--card); 
+            border: 1px solid var(--border); 
+            border-radius: 16px; 
+            padding: 24px; 
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-4px); border-color: var(--accent); }
+
+        .card-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+        .card-value { font-size: 2.5rem; font-weight: 800; margin-bottom: 4px; display: flex; align-items: baseline; gap: 6px; }
+        .card-unit { font-size: 1rem; color: var(--text-muted); font-weight: 400; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; margin-top: 12px; }
+
+        /* Status Colors */
+        .status-cold { background: #1e3a8a; color: #60a5fa; }
+        .status-sejuk { background: rgba(6,182,212,0.1); color: #22d3ee; }
+        .status-hangat { background: rgba(245,158,11,0.1); color: #fbbf24; }
+        .status-panas { background: rgba(239,68,68,0.1); color: #f87171; }
+        .status-basah { background: rgba(16,185,129,0.1); color: #34d399; }
+        .status-normal { background: rgba(6,182,212,0.1); color: #22d3ee; }
+        .status-kering { background: rgba(239,68,68,0.1); color: #f87171; }
+
+        /* Charts Section */
+        .charts-container { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 900px) { .charts-container { grid-template-columns: 1fr; } }
+        canvas { width: 100% !important; max-height: 250px; }
+
+        /* Settings Card */
+        .settings { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 24px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border); }
+        .settings-group { flex: 1; min-width: 200px; }
+        .settings-title { font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; color: var(--accent); }
+
+        /* Controls */
+        button { 
+            background: var(--accent); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.8rem;
+        }
+        button:hover { opacity: 0.9; transform: scale(1.02); }
+        button.stop { background: var(--danger); }
+        button.secondary { background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border); }
+        
+        input[type="range"] { width: 100%; margin: 10px 0; }
+        label { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Table */
+        .table-container { width: 100%; overflow-x: auto; margin-top: 24px; border-radius: 12px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { background: rgba(255,255,255,0.05); text-align: left; padding: 12px 16px; color: var(--text-muted); }
+        td { padding: 12px 16px; border-top: 1px solid var(--border); font-family: 'JetBrains Mono'; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">ESP32 <span style="color:white">PRO</span></div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div id="connection-status" class="status-pill">Connected to Deno</div>
+                <div id="logging-indicator" class="status-pill" style="display:none; background: rgba(239,68,68,0.1); color: var(--danger);">Logging Paused</div>
             </div>
-        </div>
+        </header>
 
-        <script>
-            /* ============================================================
-       DATA FETCH FUNCTIONS (Deno Deploy Connection)
-       ============================================================ */
+        <main class="grid">
+            <!-- DS18B20 Card -->
+            <div class="card">
+                <div class="card-label">Suhu DS18B20</div>
+                <div class="card-value"><span id="val-ds">--.-</span><span class="card-unit">°C</span></div>
+                <div id="status-ds" class="badge">Menunggu Data...</div>
+            </div>
 
-            // State
-            let logEntries = [];
-            let entryCount = 0;
-            const MAX_LOG_ENTRIES = 100;
+            <!-- Soil Moisture Card -->
+            <div class="card">
+                <div class="card-label">Kelembaban Tanah</div>
+                <div class="card-value"><span id="val-soil">--</span><span class="card-unit">%</span></div>
+                <div id="status-soil" class="badge">Menunggu Data...</div>
+            </div>
 
-            // DOM elements
-            const tempDS18B20El = document.getElementById(
-                "temp-ds18b20",
-            );
-            const tempSoilEl = document.getElementById(
-                "temp-soil",
-            );
-            const updatedDS18B20El = document.getElementById(
-                "updated-ds18b20",
-            );
-            const updatedSoilEl = document.getElementById(
-                "updated-soil",
-            );
-            const logBody = document.getElementById("log-body");
-            const logCountEl = document.getElementById(
-                "log-count",
-            );
-            const logWrapper = document.getElementById(
-                "log-wrapper",
-            );
+            <!-- Settings & Calibration -->
+            <div class="card settings">
+                <div class="settings-group">
+                    <div class="settings-title">Logging Control</div>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btn-toggle-log" onclick="toggleLogging()">Stop Logging</button>
+                        <button class="secondary" onclick="clearHistory()">Clear History</button>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <label>Interval: <span id="interval-val">2</span> detik</label>
+                        <input type="range" id="input-interval" min="1" max="60" value="2" onchange="updateInterval(this.value)">
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <div class="settings-title">Kalibrasi Sensor (Soil)</div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">Masukkan sensor ke tanah basah/kering lalu klik tombol.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="secondary" onclick="calibrate('wet')">Set Basah (100%)</button>
+                        <button class="secondary" onclick="calibrate('dry')">Set Kering (0%)</button>
+                    </div>
+                </div>
+            </div>
 
-            function getTimeString() {
-                const now = new Date();
-                return now.toLocaleTimeString("id-ID", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                });
+            <!-- Charts -->
+            <div class="charts-container">
+                <div class="card">
+                    <div class="card-label">Grafik Suhu (°C)</div>
+                    <canvas id="chart-ds"></canvas>
+                </div>
+                <div class="card">
+                    <div class="card-label">Grafik Kelembaban (%)</div>
+                    <canvas id="chart-soil"></canvas>
+                </div>
+            </div>
+
+            <!-- Log Table -->
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Waktu</th>
+                            <th>DS18B20 (°C)</th>
+                            <th>Soil (%)</th>
+                            <th>Status Suhu</th>
+                            <th>Status Tanah</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-body"></tbody>
+                </table>
+            </div>
+        </main>
+
+        <footer style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin: 40px 0;">
+            ESP32 IoT Platform &bull; Real-time Data Visualization
+        </footer>
+    </div>
+
+    <script>
+        let config = { isLogging: true, interval: 2000 };
+        let charts = {};
+        const MAX_HISTORY = 20;
+
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { display: false },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } }
+                },
+                plugins: { legend: { display: false } },
+                elements: { line: { tension: 0.4 }, point: { radius: 0 } }
+            };
+
+            charts.ds = new Chart(document.getElementById('chart-ds'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ data: [], borderColor: '#06b6d4', borderWidth: 2, fill: true, backgroundColor: 'rgba(6,182,212,0.05)' }] },
+                options: commonOptions
+            });
+
+            charts.soil = new Chart(document.getElementById('chart-soil'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ data: [], borderColor: '#10b981', borderWidth: 2, fill: true, backgroundColor: 'rgba(16,185,129,0.05)' }] },
+                options: commonOptions
+            });
+        }
+
+        async function fetchData() {
+            try {
+                const res = await fetch('/api/data');
+                const data = await res.json();
+                
+                updateUI(data.current);
+                updateCharts(data.history);
+                updateTable(data.history);
+                
+                config = data.config;
+                syncConfigUI();
+            } catch (err) {
+                console.error('Fetch error:', err);
+                document.getElementById('connection-status').textContent = 'Error: Deno Offline';
+                document.getElementById('connection-status').style.color = '#ef4444';
             }
+        }
 
-            /* ============================================================
-       UI UPDATE FUNCTIONS
-       ============================================================ */
+        function getTempStatus(val) {
+            if (val < 15) return { text: 'DAPUR DINGIN', class: 'status-cold' };
+            if (val < 24) return { text: 'SEJUK', class: 'status-sejuk' };
+            if (val < 34) return { text: 'HANGAT', class: 'status-hangat' };
+            return { text: 'PANAS 🔥', class: 'status-panas' };
+        }
 
-            function updateCards(ds18b20Temp, soilValue) {
-                // Animate number change
-                animateValue(tempDS18B20El, ds18b20Temp, 2);
-                animateValue(tempSoilEl, soilValue, 0);
+        function getSoilStatus(val) {
+            if (val > 70) return { text: 'BASAH', class: 'status-basah' };
+            if (val >= 30) return { text: 'NORMAL', class: 'status-normal' };
+            return { text: 'KERING ⚠️', class: 'status-kering' };
+        }
 
-                const timeStr = getTimeString();
-                updatedDS18B20El.textContent =
-                    `Diperbarui pukul ${timeStr}`;
-                updatedSoilEl.textContent =
-                    `Diperbarui pukul ${timeStr}`;
-            }
+        function updateUI(curr) {
+            document.getElementById('val-ds').textContent = curr.ds.toFixed(1);
+            document.getElementById('val-soil').textContent = Math.round(curr.moisture);
 
-            function animateValue(element, newValue, decimals) {
-                element.style.transition =
-                    "transform 0.15s ease, opacity 0.15s ease";
-                element.style.transform = "scale(1.04)";
-                element.style.opacity = "0.7";
+            const tStat = getTempStatus(curr.ds);
+            const sStat = getSoilStatus(curr.moisture);
 
-                setTimeout(() => {
-                    element.textContent = decimals > 0 
-                        ? newValue.toFixed(decimals) 
-                        : Math.round(newValue);
-                    element.style.transform = "scale(1)";
-                    element.style.opacity = "1";
-                }, 150);
-            }
+            const dsBadge = document.getElementById('status-ds');
+            dsBadge.textContent = tStat.text;
+            dsBadge.className = 'badge ' + tStat.class;
 
-            function addLogEntry(ds18b20Temp, soilValue) {
-                entryCount++;
-                const timeStr = getTimeString();
+            const soilBadge = document.getElementById('status-soil');
+            soilBadge.textContent = sStat.text;
+            soilBadge.className = 'badge ' + sStat.class;
+        }
 
-                // Prepend new row (newest on top)
-                const row = document.createElement("tr");
-                row.classList.add("new-row");
-                row.innerHTML = `
-        <td class="col-time">${entryCount}</td>
-        <td class="col-time">${timeStr}</td>
-        <td class="col-ds18b20">${ds18b20Temp.toFixed(2)}</td>
-        <td class="col-soil">${Math.round(soilValue)}</td>
-      `;
+        function updateCharts(history) {
+            const labels = history.map(h => new Date(h.time).toLocaleTimeString());
+            const dsData = history.map(h => h.ds);
+            const soilData = history.map(h => h.moisture);
 
-                if (logBody.firstChild) {
-                    logBody.insertBefore(
-                        row,
-                        logBody.firstChild,
-                    );
-                } else {
-                    logBody.appendChild(row);
-                }
+            charts.ds.data.labels = labels;
+            charts.ds.data.datasets[0].data = dsData;
+            charts.ds.update('none');
 
-                // Remove animation class after animation ends
-                setTimeout(
-                    () => row.classList.remove("new-row"),
-                    500,
-                );
+            charts.soil.data.labels = labels;
+            charts.soil.data.datasets[0].data = soilData;
+            charts.soil.update('none');
+        }
 
-                // Limit entries
-                while (
-                    logBody.children.length > MAX_LOG_ENTRIES
-                ) {
-                    logBody.removeChild(logBody.lastChild);
-                }
+        function updateTable(history) {
+            const body = document.getElementById('log-body');
+            body.innerHTML = '';
+            
+            [...history].reverse().slice(0, 10).forEach(h => {
+                const tStat = getTempStatus(h.ds);
+                const sStat = getSoilStatus(h.moisture);
+                const row = `<tr>
+                    <td>${new Date(h.time).toLocaleTimeString()}</td>
+                    <td style="color:#06b6d4">${h.ds.toFixed(2)}</td>
+                    <td style="color:#10b981">${Math.round(h.moisture)}%</td>
+                    <td><span class="badge ${tStat.class}">${tStat.text}</span></td>
+                    <td><span class="badge ${sStat.class}">${sStat.text}</span></td>
+                </tr>`;
+                body.innerHTML += row;
+            });
+        }
 
-                // Update count
-                logCountEl.textContent = `${
-                    Math.min(entryCount, MAX_LOG_ENTRIES)
-                } entries`;
-            }
+        function syncConfigUI() {
+            const btn = document.getElementById('btn-toggle-log');
+            btn.textContent = config.isLogging ? 'Stop Logging' : 'Start Logging';
+            btn.className = config.isLogging ? 'stop' : '';
+            
+            document.getElementById('logging-indicator').style.display = config.isLogging ? 'none' : 'block';
+            document.getElementById('interval-val').textContent = config.interval / 1000;
+            document.getElementById('input-interval').value = config.interval / 1000;
+        }
 
-            function clearLog() {
-                logBody.innerHTML = "";
-                entryCount = 0;
-                logCountEl.textContent = "0 entries";
-            }
+        async function toggleLogging() {
+            const nextState = !config.isLogging;
+            await fetch('/api/config', {
+                method: 'POST',
+                body: JSON.stringify({ isLogging: nextState })
+            });
+            fetchData();
+        }
 
-            /* ============================================================
-       MAIN LOOP (Deno Deploy / Server-side dummy)
-       ============================================================ */
+        async function updateInterval(val) {
+            await fetch('/api/config', {
+                method: 'POST',
+                body: JSON.stringify({ interval: val * 1000 })
+            });
+            fetchData();
+        }
 
-            async function updateSensors() {
-                try {
-                    const response = await fetch("/data");
-                    if (!response.ok) {
-                        throw new Error("Network error");
-                    }
-                    const d = await response.json();
+        async function calibrate(mode) {
+            alert(`Kalibrasi ${mode} dikirim ke server. Pastikan ESP32 terhubung.`);
+            await fetch('/api/calibrate', {
+                method: 'POST',
+                body: JSON.stringify({ mode })
+            });
+        }
 
-                    updateCards(d.ds, d.soil);
-                    addLogEntry(d.ds, d.soil);
-                } catch (err) {
-                    console.error("Fetch error:", err);
-                }
-            }
+        initCharts();
+        setInterval(fetchData, 2000);
+        fetchData();
 
-            // Start fetching updates
-            updateSensors(); // Initial reading
-            setInterval(updateSensors, 2500); // Every 2.5 seconds
-        </script>
-    </body>
+    </script>
+</body>
 </html>
