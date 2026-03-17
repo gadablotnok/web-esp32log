@@ -582,9 +582,9 @@
                     <span class="dot"></span>
                     <span>Live Monitoring</span>
                 </div>
-                <h1 class="header__title">ESP32 Temperature Monitor</h1>
+                <h1 class="header__title">ESP32 Sensor Monitor</h1>
                 <p class="header__subtitle">
-                    DS18B20 & LM35 — Real-time sensor readings
+                    DS18B20 & Soil Moisture — Real-time sensor readings
                 </p>
             </header>
 
@@ -613,21 +613,21 @@
                     </div>
                 </div>
 
-                <!-- LM35 Card -->
+                <!-- Soil Moisture Card -->
                 <div class="card card--lm35">
                     <div class="card__header">
                         <div class="card__label">
-                            <div class="card__icon">🔥</div>
+                            <div class="card__icon">🌱</div>
                             <div>
-                                <div class="card__name">LM35</div>
-                                <div class="card__type">Analog — ADC</div>
+                                <div class="card__name">Soil Moisture</div>
+                                <div class="card__type">Analog — Resistor</div>
                             </div>
                         </div>
                         <div class="card__status" id="status-lm35">Online</div>
                     </div>
                     <div class="card__temp-wrapper">
-                        <span class="card__temp" id="temp-lm35">--.-</span>
-                        <span class="card__unit">°C</span>
+                        <span class="card__temp" id="temp-lm35">----</span>
+                        <span class="card__unit">raw</span>
                     </div>
                     <div class="card__updated" id="updated-lm35">
                         Waiting for data...
@@ -661,7 +661,7 @@
                                 <th style="width: 25%">#</th>
                                 <th style="width: 25%">Time</th>
                                 <th style="width: 25%">DS18B20 (°C)</th>
-                                <th style="width: 25%">LM35 (°C)</th>
+                                <th style="width: 25%">Soil (raw)</th>
                             </tr>
                         </thead>
                         <tbody id="log-body"></tbody>
@@ -720,32 +720,34 @@
        UI UPDATE FUNCTIONS
        ============================================================ */
 
-            function updateCards(ds18b20Temp, lm35Temp) {
+            function updateCards(ds18b20Temp, soilValue) {
                 // Animate number change
-                animateValue(tempDS18B20El, ds18b20Temp);
-                animateValue(tempLM35El, lm35Temp);
+                animateValue(tempDS18B20El, ds18b20Temp, 2);
+                animateValue(tempLM35El, soilValue, 0);
 
                 const timeStr = getTimeString();
                 updatedDS18B20El.textContent =
-                    `Updated at ${timeStr}`;
+                    `Diperbarui pukul ${timeStr}`;
                 updatedLM35El.textContent =
-                    `Updated at ${timeStr}`;
+                    `Diperbarui pukul ${timeStr}`;
             }
 
-            function animateValue(element, newValue) {
+            function animateValue(element, newValue, decimals) {
                 element.style.transition =
                     "transform 0.15s ease, opacity 0.15s ease";
                 element.style.transform = "scale(1.04)";
                 element.style.opacity = "0.7";
 
                 setTimeout(() => {
-                    element.textContent = newValue.toFixed(2);
+                    element.textContent = decimals > 0 
+                        ? newValue.toFixed(decimals) 
+                        : Math.round(newValue);
                     element.style.transform = "scale(1)";
                     element.style.opacity = "1";
                 }, 150);
             }
 
-            function addLogEntry(ds18b20Temp, lm35Temp) {
+            function addLogEntry(ds18b20Temp, soilValue) {
                 entryCount++;
                 const timeStr = getTimeString();
 
@@ -756,7 +758,7 @@
         <td class="col-time">${entryCount}</td>
         <td class="col-time">${timeStr}</td>
         <td class="col-ds18b20">${ds18b20Temp.toFixed(2)}</td>
-        <td class="col-lm35">${lm35Temp.toFixed(2)}</td>
+        <td class="col-lm35">${Math.round(soilValue)}</td>
       `;
 
                 if (logBody.firstChild) {
@@ -805,8 +807,8 @@
                     }
                     const d = await response.json();
 
-                    updateCards(d.ds, d.lm);
-                    addLogEntry(d.ds, d.lm);
+                    updateCards(d.ds, d.soil);
+                    addLogEntry(d.ds, d.soil);
                 } catch (err) {
                     console.error("Fetch error:", err);
                 }

@@ -15,10 +15,11 @@ Deno.serve((req) => {
   if (url.pathname === "/data") {
     // DS18B20: high precision, small fluctuations (±0.3°C) around 27.5
     const ds = 27.5 + (Math.random() - 0.5) * 0.6;
-    // LM35: slightly noisier analog reading (±0.8°C) around 28.2
-    const lm = 28.2 + (Math.random() - 0.5) * 1.6;
+    // Soil Moisture: raw analog value (0-4095)
+    // Simulating values around 2200
+    const soil = Math.floor(2200 + (Math.random() - 0.5) * 500);
     
-    return new Response(JSON.stringify({ ds, lm }), {
+    return new Response(JSON.stringify({ ds, soil }), {
       headers: { 
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*" 
