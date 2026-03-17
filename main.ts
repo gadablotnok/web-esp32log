@@ -23,9 +23,9 @@ let config = {
 
 // --- CREDENTIALS (USER MUST FILL THESE) ---
 // Note: for production, use environment variables!
-const MQTT_BROKER = "mqtts://xxx.hivemq.cloud:8883"; 
-const MQTT_USERNAME = "your_username";
-const MQTT_PASSWORD = "your_password";
+const MQTT_BROKER = "mqtts://4abd7e71f6884653b25def6d1b16e24c.s1.eu.hivemq.cloud:8883"; 
+const MQTT_USERNAME = "node1";
+const MQTT_PASSWORD = "Abcd1234";
 // ------------------------------------------
 
 let connectedToEsp = false;
