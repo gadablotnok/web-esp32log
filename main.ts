@@ -1,9 +1,20 @@
 import { serveDir } from "std/http/file_server.ts";
 
-// In-memory state (resets on deploy/restart)
-let history = [];
+interface DataPoint {
+  ds: number;
+  moisture: number;
+  time: string;
+}
+
+// In-memory state
+let history: DataPoint[] = [];
+let latestData: DataPoint = {
+  ds: 0,
+  moisture: 0,
+  time: new Date().toISOString()
+};
 let config = {
-  interval: 2000, // ms
+  interval: 2000, 
   isLogging: true,
   dryValue: 4095,
   wetValue: 1500
@@ -22,29 +33,32 @@ Deno.serve((req) => {
 
   // API: Get current data & history
   if (url.pathname === "/api/data") {
-    // DS18B20: high precision, small fluctuations (±0.3°C) around 27.5
-    const ds = 27.5 + (Math.random() - 0.5) * 0.6;
-    // Soil Moisture proxy for demo - actual logic in ESP32 later
-    // For now, let's simulate the ESP32 already calculating 0-100%
-    const moisture = Math.floor(Math.random() * 100);
-    
-    const record = {
-      time: new Date().toISOString(),
-      ds,
-      moisture
-    };
-
-    if (config.isLogging) {
-      history.push(record);
-      if (history.length > 100) history.shift();
-    }
-
     return new Response(JSON.stringify({ 
-      current: record, 
+      current: latestData, 
       history, 
       config 
     }), {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  // API: Receive data from ESP32
+  if (url.pathname === "/api/report" && req.method === "POST") {
+    return req.json().then(data => {
+      latestData = {
+        ds: data.temp,
+        moisture: data.moisture,
+        time: new Date().toISOString()
+      };
+      
+      if (config.isLogging) {
+        history.push(latestData);
+        if (history.length > 200) history.shift();
+      }
+      
+      return new Response(JSON.stringify({ success: true, interval: config.interval }), {
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
     });
   }
 
@@ -58,9 +72,8 @@ Deno.serve((req) => {
     });
   }
 
-  // API: Calibration commands (to be fetched by ESP32)
+  // API: Calibration (placeholder)
   if (url.pathname === "/api/calibrate" && req.method === "POST") {
-     // This would set a flag that the ESP32 picks up
      return new Response(JSON.stringify({ success: true }), {
        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
      });
