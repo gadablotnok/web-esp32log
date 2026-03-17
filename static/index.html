@@ -184,7 +184,7 @@
                     </div>
                     <div style="margin-top: 15px;">
                         <label>Interval: <span id="interval-val">2</span> detik</label>
-                        <input type="range" id="input-interval" min="1" max="60" value="2" onchange="updateInterval(this.value)">
+                        <input type="range" id="input-interval" min="1" max="60" value="2" oninput="document.getElementById('interval-val').textContent = this.value" onchange="updateInterval(this.value)">
                     </div>
                 </div>
                 <div class="settings-group">
@@ -355,8 +355,13 @@
             btn.className = config.isLogging ? 'stop' : '';
             
             document.getElementById('logging-indicator').style.display = config.isLogging ? 'none' : 'block';
-            document.getElementById('interval-val').textContent = config.interval / 1000;
-            document.getElementById('input-interval').value = config.interval / 1000;
+            
+            // Perbarui nilai slider HANYA saat user tidak sedang menggesernya
+            const slider = document.getElementById('input-interval');
+            if (document.activeElement !== slider) {
+                slider.value = config.interval / 1000;
+                document.getElementById('interval-val').textContent = config.interval / 1000;
+            }
         }
 
         async function toggleLogging() {
