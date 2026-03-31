@@ -194,16 +194,14 @@
         <main class="grid">
             <!-- DS18B20 Card -->
             <div class="card">
-                <div class="card-label">Suhu DS18B20</div>
+                <div class="card-label">Suhu</div>
                 <div class="card-value"><span id="val-ds">--.-</span><span class="card-unit">°C</span></div>
-                <div id="status-ds" class="badge">Menunggu Data...</div>
             </div>
-
-            <!-- Soil Moisture Card -->
+ 
+            <!-- Soil Card -->
             <div class="card">
-                <div class="card-label">Kelembaban Tanah</div>
-                <div class="card-value"><span id="val-soil">--</span><span class="card-unit">%</span></div>
-                <div id="status-soil" class="badge">Menunggu Data...</div>
+                <div class="card-label">Tegangan Soil</div>
+                <div class="card-value"><span id="val-soil">--</span><span class="card-unit">V</span></div>
             </div>
 
             <!-- Settings & Calibration -->
@@ -225,11 +223,11 @@
             <!-- Charts -->
             <div class="charts-container">
                 <div class="card">
-                    <div class="card-label">Grafik Suhu (°C)</div>
+                    <div class="card-label">Suhu (°C)</div>
                     <canvas id="chart-ds"></canvas>
                 </div>
                 <div class="card">
-                    <div class="card-label">Grafik Kelembaban (%)</div>
+                    <div class="card-label">Tegangan Soil (V)</div>
                     <canvas id="chart-soil"></canvas>
                 </div>
             </div>
@@ -245,10 +243,8 @@
                         <thead>
                             <tr>
                                 <th>Waktu</th>
-                                <th>DS18B20 (°C)</th>
-                                <th>Soil (%)</th>
-                                <th>Status Suhu</th>
-                                <th>Status Tanah</th>
+                                <th>Suhu (°C)</th>
+                                <th>Soil (V)</th>
                             </tr>
                         </thead>
                         <tbody id="log-body"></tbody>
@@ -321,31 +317,9 @@
             }
         }
 
-        function getTempStatus(val) {
-            if (val > 40) return { text: 'PANAS 🔥', class: 'status-panas' };
-            return { text: 'NORMAL', class: 'status-normal' };
-        }
-
-        function getSoilStatus(val) {
-            if (val >= 70) return { text: 'BASAH', class: 'status-basah' };
-            if (val <= 30) return { text: 'KERING ⚠️', class: 'status-kering' };
-            return { text: 'NORMAL', class: 'status-normal' };
-        }
-
         function updateUI(curr) {
             document.getElementById('val-ds').textContent = curr.ds.toFixed(1);
-            document.getElementById('val-soil').textContent = Math.round(curr.moisture);
-
-            const tStat = getTempStatus(curr.ds);
-            const sStat = getSoilStatus(curr.moisture);
-
-            const dsBadge = document.getElementById('status-ds');
-            dsBadge.textContent = tStat.text;
-            dsBadge.className = 'badge ' + tStat.class;
-
-            const soilBadge = document.getElementById('status-soil');
-            soilBadge.textContent = sStat.text;
-            soilBadge.className = 'badge ' + sStat.class;
+            document.getElementById('val-soil').textContent = curr.moisture.toFixed(2);
         }
 
         function updateCharts(history) {
@@ -368,18 +342,14 @@
             
             // Show all history from server (reverse to show latest on top)
             [...history].reverse().forEach(h => {
-                const tStat = getTempStatus(h.ds);
-                const sStat = getSoilStatus(h.moisture);
                 const row = `<tr>
                     <td style="color:var(--text-muted); font-size:0.75rem;">${new Date(h.time).toLocaleTimeString()}</td>
                     <td style="color:#06b6d4; font-weight:500;">${h.ds.toFixed(2)}</td>
-                    <td style="color:#10b981; font-weight:500;">${Math.round(h.moisture)}%</td>
-                    <td><span class="badge ${tStat.class}">${tStat.text}</span></td>
-                    <td><span class="badge ${sStat.class}">${sStat.text}</span></td>
+                    <td style="color:#10b981; font-weight:500;">${h.moisture.toFixed(2)} V</td>
                 </tr>`;
                 body.innerHTML += row;
             });
-
+ 
             document.getElementById('log-count').textContent = `${history.length} entri`;
         }
 
