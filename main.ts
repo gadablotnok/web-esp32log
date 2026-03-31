@@ -17,6 +17,7 @@ let latestData: DataPoint = {
 let config = {
   interval: 2000,
   isLogging: true,
+  isAlarmEnabled: true,
 };
 
 // --- CREDENTIALS (USER MUST FILL THESE) ---

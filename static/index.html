@@ -210,8 +210,9 @@
             <div class="card settings">
                 <div class="settings-group">
                     <div class="settings-title">Logging Control</div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <button id="btn-toggle-log" onclick="toggleLogging()">Stop Logging</button>
+                        <button id="btn-toggle-alarm" class="secondary" onclick="toggleAlarm()">Alarm: ON</button>
                         <button class="secondary" onclick="clearHistory()">Clear History</button>
                     </div>
                     <div style="margin-top: 15px;">
@@ -400,6 +401,18 @@
                 logStatus.style.borderColor = 'rgba(239,68,68,0.2)';
             }
             
+            // Perbarui tombol alarm
+            const alarmBtn = document.getElementById('btn-toggle-alarm');
+            if (config.isAlarmEnabled) {
+                alarmBtn.textContent = 'Alarm: ON';
+                alarmBtn.style.borderColor = 'var(--secondary)';
+                alarmBtn.classList.remove('stop');
+            } else {
+                alarmBtn.textContent = 'Alarm: OFF';
+                alarmBtn.style.borderColor = 'var(--danger)';
+                alarmBtn.classList.add('stop');
+            }
+            
             // Perbarui nilai slider HANYA saat user tidak sedang menggesernya
             const slider = document.getElementById('input-interval');
             if (document.activeElement !== slider) {
@@ -413,6 +426,15 @@
             await fetch('/api/config', {
                 method: 'POST',
                 body: JSON.stringify({ isLogging: nextState })
+            });
+            fetchData();
+        }
+
+        async function toggleAlarm() {
+            const nextState = !config.isAlarmEnabled;
+            await fetch('/api/config', {
+                method: 'POST',
+                body: JSON.stringify({ isAlarmEnabled: nextState })
             });
             fetchData();
         }
