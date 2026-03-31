@@ -219,14 +219,6 @@
                         <input type="range" id="input-interval" min="500" max="15000" step="500" value="2000" oninput="document.getElementById('interval-val').textContent = (this.value / 1000).toFixed(1)" onchange="updateInterval(this.value)">
                     </div>
                 </div>
-                <div class="settings-group">
-                    <div class="settings-title">Kalibrasi Sensor (Soil)</div>
-                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">Masukkan sensor ke tanah basah/kering lalu klik tombol.</p>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="secondary" onclick="calibrate('wet')">Set Basah (100%)</button>
-                        <button class="secondary" onclick="calibrate('dry')">Set Kering (0%)</button>
-                    </div>
-                </div>
             </div>
 
             <!-- Charts -->
@@ -329,16 +321,14 @@
         }
 
         function getTempStatus(val) {
-            if (val < 15) return { text: 'DAPUR DINGIN', class: 'status-cold' };
-            if (val < 24) return { text: 'SEJUK', class: 'status-sejuk' };
-            if (val < 34) return { text: 'HANGAT', class: 'status-hangat' };
-            return { text: 'PANAS 🔥', class: 'status-panas' };
+            if (val > 40) return { text: 'PANAS 🔥', class: 'status-panas' };
+            return { text: 'NORMAL', class: 'status-normal' };
         }
 
         function getSoilStatus(val) {
-            if (val > 70) return { text: 'BASAH', class: 'status-basah' };
-            if (val >= 30) return { text: 'NORMAL', class: 'status-normal' };
-            return { text: 'KERING ⚠️', class: 'status-kering' };
+            if (val >= 70) return { text: 'BASAH', class: 'status-basah' };
+            if (val <= 30) return { text: 'KERING ⚠️', class: 'status-kering' };
+            return { text: 'NORMAL', class: 'status-normal' };
         }
 
         function updateUI(curr) {

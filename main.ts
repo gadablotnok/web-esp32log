@@ -17,8 +17,6 @@ let latestData: DataPoint = {
 let config = {
   interval: 2000,
   isLogging: true,
-  dryValue: 4095,
-  wetValue: 1500,
 };
 
 // --- CREDENTIALS (USER MUST FILL THESE) ---
@@ -175,17 +173,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // API: Calibration
-    if (url.pathname === "/api/calibrate" && req.method === "POST") {
-      const payload = await req.json();
-      if (client.connected) {
-          client.publish("esp32/calibrate", JSON.stringify({ mode: payload.mode }));
-      }
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { "Content-Type": "application/json", ...corsHeaders } },
-      );
-    }
 
     return new Response("Not Found", { status: 404 });
   } catch (error) {
