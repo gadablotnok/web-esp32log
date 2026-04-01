@@ -339,7 +339,9 @@
                 statusSoil.className = 'badge status-basah';
                 statusSoil.style.display = 'inline-block';
             } else {
-                statusSoil.style.display = 'none';
+                statusSoil.textContent = 'SEDANG';
+                statusSoil.className = 'badge status-normal';
+                statusSoil.style.display = 'inline-block';
             }
         }
 
