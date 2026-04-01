@@ -4,6 +4,7 @@ import mqtt from "npm:mqtt";
 interface DataPoint {
   ds: number;
   moisture: number;
+  moistureV: number;
   time: string;
 }
 
@@ -12,6 +13,7 @@ let history: DataPoint[] = [];
 let latestData: DataPoint = {
   ds: 0,
   moisture: 0,
+  moistureV: 0,
   time: new Date().toISOString(),
 };
 let config = {
@@ -55,6 +57,7 @@ client.on('message', (topic, message) => {
             latestData = {
                 ds: data.temp || 0,
                 moisture: data.moisture || 0,
+                moistureV: data.moistureV || 0,
                 time: new Date().toISOString()
             };
             
@@ -137,6 +140,7 @@ Deno.serve(async (req) => {
       latestData = {
         ds: data.temp || 0,
         moisture: data.moisture || 0,
+        moistureV: data.moistureV || 0,
         time: new Date().toISOString(),
       };
 
