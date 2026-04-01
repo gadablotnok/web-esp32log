@@ -200,8 +200,9 @@
  
             <!-- Soil Card -->
             <div class="card">
-                <div class="card-label">Tegangan Soil</div>
-                <div class="card-value"><span id="val-soil">--</span><span class="card-unit">V</span></div>
+                <div class="card-label">Soil Moisture</div>
+                <div class="card-value"><span id="val-soil">--</span><span class="card-unit">%</span></div>
+                <div id="status-soil" class="badge" style="display: none;"></div>
             </div>
 
             <!-- Settings & Calibration -->
@@ -218,6 +219,13 @@
                         <input type="range" id="input-interval" min="500" max="15000" step="500" value="2000" oninput="document.getElementById('interval-val').textContent = (this.value / 1000).toFixed(1)" onchange="updateInterval(this.value)">
                     </div>
                 </div>
+                <div class="settings-group">
+                    <div class="settings-title">Calibration</div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="secondary" onclick="calibrate('kering')">Setel Kering</button>
+                        <button class="secondary" onclick="calibrate('basah')">Setel Basah</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Charts -->
@@ -227,7 +235,7 @@
                     <canvas id="chart-ds"></canvas>
                 </div>
                 <div class="card">
-                    <div class="card-label">Tegangan Soil (V)</div>
+                    <div class="card-label">Soil Moisture (%)</div>
                     <canvas id="chart-soil"></canvas>
                 </div>
             </div>
@@ -244,7 +252,7 @@
                             <tr>
                                 <th>Waktu</th>
                                 <th>Suhu (°C)</th>
-                                <th>Soil (V)</th>
+                                <th>Soil (%)</th>
                             </tr>
                         </thead>
                         <tbody id="log-body"></tbody>
@@ -319,7 +327,20 @@
 
         function updateUI(curr) {
             document.getElementById('val-ds').textContent = curr.ds.toFixed(1);
-            document.getElementById('val-soil').textContent = curr.moisture.toFixed(2);
+            document.getElementById('val-soil').textContent = curr.moisture.toFixed(1);
+            
+            const statusSoil = document.getElementById('status-soil');
+            if (curr.moisture <= 30) {
+                statusSoil.textContent = 'KERING';
+                statusSoil.className = 'badge status-kering';
+                statusSoil.style.display = 'inline-block';
+            } else if (curr.moisture >= 70) {
+                statusSoil.textContent = 'BASAH';
+                statusSoil.className = 'badge status-basah';
+                statusSoil.style.display = 'inline-block';
+            } else {
+                statusSoil.style.display = 'none';
+            }
         }
 
         function updateCharts(history) {
@@ -345,7 +366,7 @@
                 const row = `<tr>
                     <td style="color:var(--text-muted); font-size:0.75rem;">${new Date(h.time).toLocaleTimeString()}</td>
                     <td style="color:#06b6d4; font-weight:500;">${h.ds.toFixed(2)}</td>
-                    <td style="color:#10b981; font-weight:500;">${h.moisture.toFixed(2)} V</td>
+                    <td style="color:#10b981; font-weight:500;">${h.moisture.toFixed(1)}%</td>
                 </tr>`;
                 body.innerHTML += row;
             });
