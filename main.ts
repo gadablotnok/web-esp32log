@@ -174,22 +174,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // API: Calibrate
-    if (url.pathname === "/api/calibrate" && req.method === "POST") {
-        const { mode } = await req.json();
-        console.log(`[API] Calibrating: ${mode}`);
-        
-        if (client.connected) {
-            client.publish("esp32/calibrate", mode);
-        }
-
-        return new Response(
-            JSON.stringify({ success: true }),
-            { headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-    }
-
-
     return new Response("Not Found", { status: 404 });
   } catch (error) {
     console.error("Server Error:", error);

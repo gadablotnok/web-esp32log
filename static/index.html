@@ -196,6 +196,7 @@
             <div class="card">
                 <div class="card-label">Suhu</div>
                 <div class="card-value"><span id="val-ds">--.-</span><span class="card-unit">°C</span></div>
+                <div id="status-temp" class="badge"></div>
             </div>
  
             <!-- Soil Card -->
@@ -219,13 +220,6 @@
                     <div style="margin-top: 15px;">
                         <label>Interval: <span id="interval-val">2.0</span> detik</label>
                         <input type="range" id="input-interval" min="500" max="15000" step="500" value="2000" oninput="document.getElementById('interval-val').textContent = (this.value / 1000).toFixed(1)" onchange="updateInterval(this.value)">
-                    </div>
-                </div>
-                <div class="settings-group">
-                    <div class="settings-title">Sensor Soil Moisture</div>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="secondary" onclick="calibrate('kering')">Setel Kering</button>
-                        <button class="secondary" onclick="calibrate('basah')">Setel Basah</button>
                     </div>
                 </div>
             </div>
@@ -335,6 +329,23 @@
 
         function updateUI(curr) {
             document.getElementById('val-ds').textContent = curr.ds.toFixed(1);
+            
+            const statusTemp = document.getElementById('status-temp');
+            const t = curr.ds;
+            if (t > 40.0) {
+                statusTemp.textContent = 'PANAS (EXTREME)';
+                statusTemp.className = 'badge status-panas';
+            } else if (t > 30.0) {
+                statusTemp.textContent = 'HANGAT';
+                statusTemp.className = 'badge status-hangat';
+            } else if (t > 20.0) {
+                statusTemp.textContent = 'SEJUK';
+                statusTemp.className = 'badge status-sejuk';
+            } else {
+                statusTemp.textContent = 'DINGIN';
+                statusTemp.className = 'badge status-cold';
+            }
+
             document.getElementById('val-soil').textContent = curr.moisture;
             
             const statusSoil = document.getElementById('status-soil');
@@ -458,14 +469,6 @@
                 body: JSON.stringify({ interval: parseInt(val) })
             });
             fetchData();
-        }
-
-        async function calibrate(mode) {
-            alert(`Kondisi ${mode} dikirim ke server. Pastikan ESP32 terhubung.`);
-            await fetch('/api/calibrate', {
-                method: 'POST',
-                body: JSON.stringify({ mode })
-            });
         }
 
         initCharts();
