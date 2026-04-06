@@ -200,10 +200,9 @@
  
             <!-- Soil Card -->
             <div class="card">
-                <div class="card-label">Soil Moisture</div>
+                <div class="card-label">Soil Moisture (Analog)</div>
                 <div class="card-value">
-                    <span id="val-soil">--</span><span class="card-unit">%</span>
-                    <span style="font-size: 1rem; color: var(--text-muted); margin-left: 10px;">(<span id="val-soil-v">-.--</span>V)</span>
+                    <span id="val-soil">--</span>
                 </div>
                 <div id="status-soil" class="badge" style="display: none;"></div>
             </div>
@@ -234,16 +233,12 @@
             <!-- Charts -->
             <div class="charts-container">
                 <div class="card">
-                    <div class="card-label">Suhu (°C)</div>
+                    <div class="card-label">Grafik Suhu (°C)</div>
                     <canvas id="chart-ds"></canvas>
                 </div>
                 <div class="card">
-                    <div class="card-label">Soil Moisture (%)</div>
+                    <div class="card-label">Grafik Soil Moisture (Analog)</div>
                     <canvas id="chart-soil"></canvas>
-                </div>
-                <div class="card">
-                    <div class="card-label">Soil Moisture (V)</div>
-                    <canvas id="chart-soil-v"></canvas>
                 </div>
             </div>
 
@@ -259,8 +254,7 @@
                             <tr>
                                 <th>Waktu</th>
                                 <th>Suhu (°C)</th>
-                                <th>Soil (%)</th>
-                                <th>Soil (V)</th>
+                                <th>Soil (Analog)</th>
                             </tr>
                         </thead>
                         <tbody id="log-body"></tbody>
@@ -341,30 +335,40 @@
 
         function updateUI(curr) {
             document.getElementById('val-ds').textContent = curr.ds.toFixed(1);
-            document.getElementById('val-soil').textContent = curr.moisture.toFixed(1);
-            document.getElementById('val-soil-v').textContent = curr.moistureV.toFixed(2);
+            document.getElementById('val-soil').textContent = curr.moisture;
             
             const statusSoil = document.getElementById('status-soil');
-            if (curr.moisture <= 30) {
-                statusSoil.textContent = 'KERING';
-                statusSoil.className = 'badge status-kering';
-                statusSoil.style.display = 'inline-block';
-            } else if (curr.moisture >= 70) {
-                statusSoil.textContent = 'BASAH';
+            const x = curr.moisture;
+            
+            if (x <= 8000) {
+                statusSoil.textContent = 'BASAH SEMPURNA';
                 statusSoil.className = 'badge status-basah';
-                statusSoil.style.display = 'inline-block';
-            } else {
-                statusSoil.textContent = 'SEDANG';
+            } else if (x <= 10600) {
+                statusSoil.textContent = 'TANAH BASAH';
+                statusSoil.className = 'badge status-basah';
+            } else if (x <= 12000) {
+                statusSoil.textContent = 'TANAH RELATIF BASAH';
+                statusSoil.className = 'badge status-sejuk';
+            } else if (x < 13500) {
+                statusSoil.textContent = 'SEIMBANG';
                 statusSoil.className = 'badge status-normal';
-                statusSoil.style.display = 'inline-block';
+            } else if (x < 14700) {
+                statusSoil.textContent = 'TANAH RELATIF KERING';
+                statusSoil.className = 'badge status-hangat';
+            } else if (x < 17400) {
+                statusSoil.textContent = 'TANAH KERING';
+                statusSoil.className = 'badge status-kering';
+            } else {
+                statusSoil.textContent = 'KERING SEMPURNA';
+                statusSoil.className = 'badge status-panas';
             }
+            statusSoil.style.display = 'inline-block';
         }
 
         function updateCharts(history) {
             const labels = history.map(h => new Date(h.time).toLocaleTimeString());
             const dsData = history.map(h => h.ds);
             const soilData = history.map(h => h.moisture);
-            const soilVData = history.map(h => h.moistureV);
 
             charts.ds.data.labels = labels;
             charts.ds.data.datasets[0].data = dsData;
@@ -373,10 +377,6 @@
             charts.soil.data.labels = labels;
             charts.soil.data.datasets[0].data = soilData;
             charts.soil.update('none');
-
-            charts.soilV.data.labels = labels;
-            charts.soilV.data.datasets[0].data = soilVData;
-            charts.soilV.update('none');
         }
 
         function updateTable(history) {
@@ -388,8 +388,7 @@
                 const row = `<tr>
                     <td style="color:var(--text-muted); font-size:0.75rem;">${new Date(h.time).toLocaleTimeString()}</td>
                     <td style="color:#06b6d4; font-weight:500;">${h.ds.toFixed(2)}</td>
-                    <td style="color:#10b981; font-weight:500;">${h.moisture.toFixed(1)}%</td>
-                    <td style="color:#f59e0b; font-weight:500;">${h.moistureV.toFixed(2)} V</td>
+                    <td style="color:#10b981; font-weight:500;">${h.moisture}</td>
                 </tr>`;
                 body.innerHTML += row;
             });
