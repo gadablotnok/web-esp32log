@@ -163,25 +163,11 @@
             .card-value { font-size: 2.2rem; }
             header { flex-direction: column; align-items: flex-start; gap: 12px; }
         }
-        /* Offline Overlay */
-        #offline-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(3, 7, 18, 0.95);
-            z-index: 9999;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            text-align: center;
-        }
+
     </style>
 </head>
 <body>
-    <div id="offline-overlay" style="display: none;">
-        <h2 style="color: var(--danger); font-size: 2rem; margin-bottom: 10px;">🔴 KONEKSI ESP32 TERPUTUS</h2>
-        <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 25px;">Menunggu data dari ESP32 via MQTT...</p>
-        <div style="padding: 12px 24px; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.3); border-radius: 8px;">
-            <span style="color: var(--accent); font-weight: 600; font-size: 0.9rem;">SAMPEL DITERIMA: </span>
-            <span id="connection-progress" style="font-family: 'JetBrains Mono'; font-size: 1.2rem; font-weight: 800; color: white;">0 / 3</span>
-        </div>
-    </div>
+
 
     <div class="container">
         <header>
@@ -303,16 +289,7 @@
                 const res = await fetch('/api/data');
                 const data = await res.json();
                 
-                // Overlay logic
-                const overlay = document.getElementById('offline-overlay');
-                if (data.connectedToEsp) {
-                    overlay.style.display = 'none';
-                } else {
-                    overlay.style.display = 'flex';
-                    document.getElementById('connection-progress').textContent = `${data.initSamples} / 3`;
-                    // Jangan update chart/table jika terputus agar data terakhir tetap terlihat
-                    return; 
-                }
+
 
                 updateUI(data.current);
                 updateCharts(data.history);

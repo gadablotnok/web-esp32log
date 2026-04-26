@@ -27,8 +27,7 @@ const MQTT_USERNAME = "node1";
 const MQTT_PASSWORD = "Abcd1234";
 // ------------------------------------------
 
-let connectedToEsp = false;
-let initSamples = 0;
+let connectedToEsp = true;
 let lastDataTime = Date.now();
 
 // MQTT Setup
@@ -60,16 +59,6 @@ client.on('message', (topic, message) => {
             
             lastDataTime = Date.now();
 
-            if (!connectedToEsp) {
-                initSamples++;
-                console.log(`[MQTT] Menerima sample awal: ${initSamples}/3`);
-                if (initSamples >= 3) {
-                    connectedToEsp = true;
-                    console.log("[MQTT] ESP32 Terhubung! Mengembalikan interval config...");
-                    client.publish("esp32/config", JSON.stringify(config));
-                }
-            }
-            
             if (config.isLogging) {
                 history.push(latestData);
                 if (history.length > 200) history.shift();
@@ -80,16 +69,7 @@ client.on('message', (topic, message) => {
     }
 });
 
-// Watchdog to check ESP32 connection
-setInterval(() => {
-    // If we haven't received data for a while (configurable timeout maxing at 10s)
-    const timeout = Math.max(config.interval + 2000, 10000);
-    if (connectedToEsp && (Date.now() - lastDataTime > timeout)) {
-        console.log("[Watchdog] ESP32 Timeout! Koneksi terputus.");
-        connectedToEsp = false;
-        initSamples = 0;
-    }
-}, 2000);
+
 
 Deno.serve(async (req) => {
   try {
@@ -122,8 +102,8 @@ Deno.serve(async (req) => {
           current: latestData,
           history,
           config,
-          connectedToEsp,
-          initSamples
+          connectedToEsp: true,
+          initSamples: 3
         }),
         {
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -142,11 +122,6 @@ Deno.serve(async (req) => {
 
       lastDataTime = Date.now();
       
-      if (!connectedToEsp) {
-          initSamples++;
-          if (initSamples >= 3) connectedToEsp = true;
-      }
-
       if (config.isLogging) {
         history.push(latestData);
         if (history.length > 200) history.shift();
